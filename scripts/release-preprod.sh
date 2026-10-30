@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
-# Release pré-prod : bump de version → commit + tag → push → build EAS (profil preview)
+# Release pré-prod : bump de version → commit + tag → push → build Android (profil preview)
 # → GitHub pre-release avec l'APK attaché.
 #
-# Usage : scripts/release-preprod.sh [patch|minor|major] [--dry-run]
+# Usage : scripts/release-preprod.sh [patch|minor|major] [--expo|--local] [--dry-run]
+#   --expo   build sur les serveurs EAS (défaut hors terminal interactif)
+#   --local  build sur cette machine (eas build --local : Java 17 + Android SDK requis)
+#   sans --expo/--local dans un terminal, le script demande.
 set -euo pipefail
+
+usage() { echo "Usage : $0 [patch|minor|major] [--expo|--local] [--dry-run]" >&2; exit 1; }
 
 BUMP=patch
 DRY=0
+MODE=
 for arg in "$@"; do
   case "$arg" in
     patch|minor|major) BUMP=$arg ;;
+    --expo) MODE=expo ;;
+    --local) MODE=local ;;
     --dry-run) DRY=1 ;;
-    *) echo "Usage : $0 [patch|minor|major] [--dry-run]" >&2; exit 1 ;;
+    *) usage ;;
   esac
 done
 
@@ -23,13 +31,32 @@ BRANCH=main
 step() { printf '\n\033[1;34m▶ %s\033[0m\n' "$*"; }
 die() { printf '\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
 
+if [ -z "$MODE" ]; then
+  if [ -t 0 ]; then
+    printf 'Où builder ?\n  1) Expo (serveurs EAS)\n  2) Local (cette machine)\n> '
+    read -r choice
+    case "$choice" in
+      1|expo|"") MODE=expo ;;
+      2|local) MODE=local ;;
+      *) usage ;;
+    esac
+  else
+    MODE=expo
+  fi
+fi
+
 # --- Vérifications -----------------------------------------------------------
-step "Vérifications"
+step "Vérifications (build : $MODE)"
 for bin in git node gh curl; do command -v "$bin" >/dev/null || die "$bin introuvable"; done
 [ "$(git rev-parse --abbrev-ref HEAD)" = "$BRANCH" ] || die "Il faut être sur la branche $BRANCH"
 [ -z "$(git status --porcelain)" ] || die "Des modifications ne sont pas commitées — commit ou stash d'abord"
 gh auth status >/dev/null 2>&1 || die "gh n'est pas connecté (gh auth login)"
 $EAS whoami >/dev/null 2>&1 || die "EAS n'est pas connecté (npx eas-cli@latest login)"
+if [ "$MODE" = local ]; then
+  # Vérifié avant le bump : un build local impossible ne doit rien pousser
+  command -v java >/dev/null || die "Java introuvable (build local : installe un JDK 17)"
+  [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME" ] || die "ANDROID_HOME non défini (build local : installe le SDK Android)"
+fi
 
 git fetch --tags --quiet origin
 git pull --ff-only --quiet origin "$BRANCH"
@@ -77,26 +104,33 @@ git commit -m "chore(release): $TAG (pré-prod)"
 git tag -a "$TAG" -m "Pré-prod $TAG"
 git push origin "$BRANCH" "$TAG"
 
-# --- Build EAS ---------------------------------------------------------------
-step "Build EAS Android (profil $PROFILE) — compte ~10-20 min"
-BUILD_JSON=$($EAS build --platform android --profile "$PROFILE" --non-interactive --wait --json)
-APK_URL=$(node -e 'const b = JSON.parse(process.argv[1])[0]; console.log(b.artifacts?.buildUrl ?? b.artifacts?.applicationArchiveUrl ?? "")' "$BUILD_JSON")
-BUILD_ID=$(node -e 'console.log(JSON.parse(process.argv[1])[0].id)' "$BUILD_JSON")
-[ -n "$APK_URL" ] || die "Build terminé sans APK — voir https://expo.dev (build $BUILD_ID)"
-
-# --- GitHub pre-release ------------------------------------------------------
-step "GitHub pre-release $TAG"
+# --- Build -------------------------------------------------------------------
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 APK="$TMP/relay-$NEXT-preprod.apk"
-curl -fsSL -o "$APK" "$APK_URL"
 
+if [ "$MODE" = local ]; then
+  step "Build local Android (profil $PROFILE)"
+  $EAS build --platform android --profile "$PROFILE" --non-interactive --local --output "$APK"
+  [ -f "$APK" ] || die "Build local terminé sans APK"
+  NOTES="Build local (eas build --local)"
+else
+  step "Build EAS Android (profil $PROFILE) — compte ~10-20 min"
+  BUILD_JSON=$($EAS build --platform android --profile "$PROFILE" --non-interactive --wait --json)
+  APK_URL=$(node -e 'const b = JSON.parse(process.argv[1])[0]; console.log(b.artifacts?.buildUrl ?? b.artifacts?.applicationArchiveUrl ?? "")' "$BUILD_JSON")
+  BUILD_ID=$(node -e 'console.log(JSON.parse(process.argv[1])[0].id)' "$BUILD_JSON")
+  [ -n "$APK_URL" ] || die "Build terminé sans APK — voir https://expo.dev (build $BUILD_ID)"
+  curl -fsSL -o "$APK" "$APK_URL"
+  NOTES="Build EAS : https://expo.dev/accounts/$(node -p "require('./app.json').expo.owner")/projects/relay/builds/$BUILD_ID"
+fi
+
+# --- GitHub pre-release ------------------------------------------------------
+step "GitHub pre-release $TAG"
 gh release create "$TAG" "$APK" \
   --prerelease \
   --title "Relay $NEXT (pré-prod)" \
   --generate-notes \
-  --notes "Build EAS : https://expo.dev/accounts/$(node -p "require('./app.json').expo.owner")/projects/relay/builds/$BUILD_ID"
+  --notes "$NOTES"
 
 step "Terminé ✓"
 echo "Release : $(gh release view "$TAG" --json url -q .url)"
-echo "APK     : $APK_URL"
