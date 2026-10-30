@@ -76,6 +76,7 @@ export function ServersProvider({ children }: { children: ReactNode }) {
       },
       async deleteServer(id) {
         await db.runAsync('DELETE FROM servers WHERE id = ?', id);
+        await db.runAsync('DELETE FROM snippets WHERE server_id = ?', id);
         await deletePassword(id);
         await reload();
       },

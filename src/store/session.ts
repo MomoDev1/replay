@@ -2,7 +2,7 @@ import Storage from 'expo-sqlite/kv-store';
 import RelaySsh from 'relay-ssh';
 import { useSyncExternalStore } from 'react';
 
-import { utf8ToB64 } from '@/lib/ssh';
+import { asSshError, SshError, utf8ToB64 } from '@/lib/ssh';
 import type { Server } from '@/lib/types';
 
 export type IdleTimeout = '5' | '15' | '60' | 'never';
@@ -79,6 +79,17 @@ export function sendB64(b64: string) {
 }
 
 export const sendText = (text: string) => sendB64(utf8ToB64(text));
+
+/** Runs a command on its own channel of the open connection (the terminal is untouched). */
+export async function exec(command: string, timeoutMs?: number) {
+  if (!current?.open || !RelaySsh) throw new SshError('NO_SESSION', 'Aucune session SSH ouverte.');
+  touch();
+  try {
+    return await RelaySsh.exec(current.id, command, timeoutMs ?? null);
+  } catch (e) {
+    throw asSshError(e);
+  }
+}
 
 export function resizeSession(cols: number, rows: number) {
   if (current?.open) RelaySsh?.resize(current.id, cols, rows).catch(() => {});

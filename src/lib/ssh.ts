@@ -29,6 +29,9 @@ export function utf8ToB64(text: string) {
   return btoa(bin);
 }
 
+/** Single-quotes a string for a POSIX shell. */
+export const sq = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+
 /** Credentials for a saved server, read from SecureStore. Overrides are used by the "test" button before saving. */
 export async function credentialsFor(server: Pick<Server, 'id' | 'user' | 'auth' | 'keyId'>, overridePassword?: string): Promise<AuthOptions> {
   if (server.auth === 'password') {

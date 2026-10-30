@@ -1,9 +1,18 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { Server, SshKey } from '@/lib/types';
+import type { Server, Snippet, SshKey } from '@/lib/types';
 
 export const DB_NAME = 'relay.db';
-const VERSION = 1;
+const VERSION = 2;
+
+const SEED_SNIPPETS: [string, string][] = [
+  ['Redémarrer un service', 'sudo systemctl restart {service:api|worker|nginx|redis}'],
+  ['Logs d’un service', 'journalctl -u {service:api|worker|nginx|redis} -n {lignes:50|200|1000} -f'],
+  ['Vider le cache', 'php artisan cache:clear && php artisan config:cache'],
+  ['État des conteneurs', 'docker compose ps'],
+  ['Purger une file', 'redis-cli -n {db:0|1|2} DEL queue:{file}'],
+  ['Recharger Nginx', 'sudo nginx -t && sudo systemctl reload nginx'],
+];
 
 export async function migrate(db: SQLiteDatabase) {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -42,6 +51,24 @@ export async function migrate(db: SQLiteDatabase) {
         PRIMARY KEY (host, port)
       );
     `);
+  }
+  if (v < 2) {
+    await db.execAsync(`
+      CREATE TABLE snippets (
+        id TEXT PRIMARY KEY NOT NULL,
+        server_id TEXT,
+        title TEXT NOT NULL,
+        cmd TEXT NOT NULL,
+        fav INTEGER NOT NULL DEFAULT 0,
+        last_vars TEXT,
+        last_used_at INTEGER,
+        created_at INTEGER NOT NULL
+      );
+    `);
+    const now = Date.now();
+    for (const [i, [title, cmd]] of SEED_SNIPPETS.entries()) {
+      await db.runAsync('INSERT INTO snippets (id, server_id, title, cmd, fav, created_at) VALUES (?, NULL, ?, ?, ?, ?)', `seed-${i}`, title, cmd, i === 4 ? 0 : 1, now + i);
+    }
   }
   await db.execAsync(`PRAGMA user_version = ${VERSION}`);
 }
@@ -101,3 +128,18 @@ export const setKnownHost = (db: SQLiteDatabase, host: string, port: number, fin
   db.runAsync('INSERT OR REPLACE INTO known_hosts (host, port, fingerprint) VALUES (?, ?, ?)', host, port, fingerprint);
 
 export const forgetKnownHost = (db: SQLiteDatabase, host: string, port: number) => db.runAsync('DELETE FROM known_hosts WHERE host = ? AND port = ?', host, port);
+
+type SnippetRow = { id: string; server_id: string | null; title: string; cmd: string; fav: number; last_vars: string | null; last_used_at: number | null; created_at: number };
+
+export const toSnippet = (r: SnippetRow): Snippet => ({
+  id: r.id,
+  serverId: r.server_id,
+  title: r.title,
+  cmd: r.cmd,
+  fav: !!r.fav,
+  lastVars: r.last_vars ? JSON.parse(r.last_vars) : {},
+  lastUsedAt: r.last_used_at,
+  createdAt: r.created_at,
+});
+
+export const listSnippets = async (db: SQLiteDatabase) => (await db.getAllAsync<SnippetRow>('SELECT * FROM snippets ORDER BY created_at')).map(toSnippet);

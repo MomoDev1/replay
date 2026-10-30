@@ -1,47 +1,50 @@
-import { CircleCheck } from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { CircleCheck, CircleX } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
 import { Mono, s, SheetHeader } from '@/components/ui';
+import { git } from '@/lib/git';
+import { currentRepo, refresh, useGit } from '@/store/git';
 import { C } from '@/theme';
 
-const OUTPUT = [
-  'remote: Enumerating objects: 23, done.',
-  'remote: Counting objects: 100% (23/23), done.',
-  'remote: Compressing objects: 100% (11/11), done.',
-  'Unpacking objects: 100% (14/14), 3.41 KiB | 498 KiB/s',
-  'From github.com:relay/api',
-  '   a41f9c2..d7e03b8  main       -> origin/main',
-  'Updating a41f9c2..d7e03b8',
-  'Fast-forward',
-  ' src/billing/export.ts | 42 ++++++++++++++++--',
-  ' 2 files changed, 38 insertions(+), 4 deletions(-)',
-];
+type Result = { ok: boolean; output: string; ms: number };
 
+/** Runs `git pull` or `git push` (param `op`) and shows its output. */
 export default function PullSheet() {
-  const [n, setN] = useState(0);
-  const done = n >= OUTPUT.length;
+  const { op = 'pull' } = useLocalSearchParams<{ op?: 'pull' | 'push' }>();
+  const st = useGit()?.status;
+  const [res, setRes] = useState<Result | null>(null);
+  // Snapshot the command once: the status refreshes after the run.
+  const [cmd] = useState(() => (op === 'push' ? (st?.upstream ? 'push' : `push -u origin ${st?.branch ?? 'HEAD'}`) : 'pull --ff-only'));
 
   useEffect(() => {
-    if (done) return;
-    const t = setTimeout(() => setN((x) => x + 1), 250);
-    return () => clearTimeout(t);
-  }, [n, done]);
+    const t0 = Date.now();
+    git(currentRepo(), cmd, { allowFail: true, timeoutMs: 300_000 })
+      .then((r) => setRes({ ok: r.exitCode === 0, output: r.output || (r.exitCode === 0 ? 'Déjà à jour.' : ''), ms: Date.now() - t0 }))
+      .catch((e) => setRes({ ok: false, output: (e as Error).message, ms: Date.now() - t0 }))
+      .finally(refresh);
+  }, [cmd]);
+
+  const lines = res?.output.split('\n') ?? [];
+  const failMsg = op === 'pull' && res?.output.includes('Not possible to fast-forward') ? 'Branches divergentes : fusionne ou rebase depuis le terminal' : 'Échec';
 
   return (
     <View style={s.sheet}>
       <SheetHeader
-        title="git pull origin main"
+        title={`git ${cmd}`}
         subtitle={
           <View style={[s.row, { gap: 6, marginTop: 4 }]}>
-            {done ? <CircleCheck size={14} color={C.green} /> : <ActivityIndicator size="small" color={C.orange} />}
-            <Text style={{ color: done ? C.green : C.orange, fontSize: 12 }}>{done ? 'Terminé en 2,4 s · 2 commits récupérés' : 'En cours…'}</Text>
+            {!res ? <ActivityIndicator size="small" color={C.orange} /> : res.ok ? <CircleCheck size={14} color={C.green} /> : <CircleX size={14} color={C.red} />}
+            <Text style={{ color: !res ? C.orange : res.ok ? C.green : C.red, fontSize: 12, flex: 1 }}>
+              {!res ? 'En cours…' : res.ok ? `Terminé en ${(res.ms / 1000).toFixed(1).replace('.', ',')} s` : failMsg}
+            </Text>
           </View>
         }
       />
       <ScrollView style={{ flex: 1, backgroundColor: C.bg, borderRadius: 10 }} contentContainerStyle={{ padding: 12, justifyContent: 'flex-end', flexGrow: 1 }}>
-        {OUTPUT.slice(0, n).map((l, i) => (
-          <Mono key={i} style={{ fontSize: 11, lineHeight: 16, color: l === 'Fast-forward' ? C.green : C.muted }}>
+        {lines.map((l, i) => (
+          <Mono key={i} selectable style={{ fontSize: 11, lineHeight: 16, color: /^(fatal|error|CONFLICT|!)/.test(l.trim()) ? C.red : l === 'Fast-forward' ? C.green : C.muted }}>
             {l}
           </Mono>
         ))}

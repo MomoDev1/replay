@@ -4,7 +4,8 @@ export type ConnectOptions = { host: string; port: number; knownFingerprint?: st
 export type ConnectResult = { sessionId: string; fingerprint: string; latencyMs: number };
 export type AuthOptions = { user: string; password?: string; privateKey?: string; passphrase?: string };
 export type GeneratedKey = { privateKey: string; publicKey: string; fingerprint: string };
-export type KeyInfo = { type: string; publicKey: string; fingerprint: string };
+export type ExecResult = { stdout: string; stderr: string; exitCode: number };
+export type KeyInfo ={ type: string; publicKey: string; fingerprint: string };
 
 export type RelaySshModuleEvents = {
   onData: (e: { sessionId: string; data: string }) => void;

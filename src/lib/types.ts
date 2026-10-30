@@ -29,3 +29,18 @@ export interface SshKey {
   publicKey: string;
   createdAt: number;
 }
+
+export interface Snippet {
+  id: string;
+  /** null = global, available on every server */
+  serverId: string | null;
+  title: string;
+  /** Variables are `{name}` (free text) or `{name:a|b|c}` (choices). */
+  cmd: string;
+  fav: boolean;
+  lastVars: Record<string, string>;
+  lastUsedAt: number | null;
+  createdAt: number;
+}
+
+export type SnippetInput = Pick<Snippet, 'serverId' | 'title' | 'cmd' | 'fav'>;

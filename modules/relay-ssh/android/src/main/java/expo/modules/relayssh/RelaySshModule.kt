@@ -25,6 +25,8 @@ import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
 import org.bouncycastle.crypto.util.OpenSSHPrivateKeyUtil
 import org.bouncycastle.crypto.util.OpenSSHPublicKeyUtil
 import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.ConnectException
 import java.net.NoRouteToHostException
 import java.net.SocketTimeoutException
@@ -35,6 +37,7 @@ import java.security.SecureRandom
 import java.security.Security
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 class SshError(code: String, message: String, cause: Throwable? = null) : CodedException(code, message, cause)
 
@@ -67,6 +70,21 @@ private fun fingerprint(key: PublicKey): String = sha256Fingerprint(Buffer.Plain
 private fun pem(label: String, data: ByteArray): String {
   val body = Base64.encodeToString(data, Base64.NO_WRAP).chunked(70).joinToString("\n")
   return "-----BEGIN $label-----\n$body\n-----END $label-----\n"
+}
+
+private const val MAX_EXEC_OUTPUT = 2 * 1024 * 1024
+
+// Reads the whole stream but keeps at most MAX_EXEC_OUTPUT bytes, so a huge diff can't exhaust memory.
+private fun readCapped(input: InputStream): ByteArray {
+  val out = ByteArrayOutputStream()
+  val buf = ByteArray(8192)
+  while (true) {
+    val n = input.read(buf)
+    if (n < 0) break
+    val room = MAX_EXEC_OUTPUT - out.size()
+    if (room > 0) out.write(buf, 0, minOf(n, room))
+  }
+  return out.toByteArray()
 }
 
 private fun mapError(e: Throwable, host: String, port: Int): SshError = when (e) {
@@ -207,6 +225,34 @@ class RelaySshModule : Module() {
       withContext(Dispatchers.IO) {
         conn(id).shell?.changeWindowDimensions(cols, rows, 0, 0)
         Unit
+      }
+    }
+
+    // Runs a one-off command on its own channel of the existing connection; the interactive shell is untouched.
+    AsyncFunction("exec") Coroutine { id: String, command: String, timeoutMs: Int? ->
+      withContext(Dispatchers.IO) {
+        val c = conn(id)
+        c.client.startSession().use { session ->
+          val cmd = session.exec(command)
+          // Drain both streams on their own threads: a full stderr window would block the server, and a
+          // blocking read here would defeat the timeout. Closing the session on timeout unblocks them.
+          var out = ByteArray(0)
+          var err = ByteArray(0)
+          val readers = listOf(
+            Thread { runCatching { out = readCapped(cmd.inputStream) } },
+            Thread { runCatching { err = readCapped(cmd.errorStream) } },
+          )
+          readers.forEach { it.isDaemon = true; it.start() }
+          val deadline = System.currentTimeMillis() + (timeoutMs ?: 120_000)
+          readers.forEach { it.join(maxOf(1L, deadline - System.currentTimeMillis())) }
+          cmd.join(maxOf(1L, deadline - System.currentTimeMillis()), TimeUnit.MILLISECONDS)
+          val code = cmd.exitStatus ?: throw SshError("TIMEOUT", "Commande interrompue (délai dépassé)")
+          mapOf(
+            "stdout" to String(out, Charsets.UTF_8),
+            "stderr" to String(err, Charsets.UTF_8),
+            "exitCode" to code,
+          )
+        }
       }
     }
 
