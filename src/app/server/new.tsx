@@ -91,6 +91,7 @@ export default function ServerForm() {
     try {
       const k = await generateKey(`relay_ed25519${keys.length ? `_${keys.length + 1}` : ''}`);
       setKeyId(k.id);
+      router.push(`/key/${k.id}`);
     } catch (e) {
       Alert.alert('Génération impossible', asSshError(e).message);
     }
@@ -138,6 +139,9 @@ export default function ServerForm() {
                         {k.type} · {k.fingerprint}
                       </Mono>
                     </View>
+                    <Pressable onPress={() => router.push(`/key/${k.id}`)} hitSlop={10}>
+                      <Text style={{ color: C.accent, fontSize: 13 }}>Voir</Text>
+                    </Pressable>
                   </Pressable>
                 </View>
               ))}

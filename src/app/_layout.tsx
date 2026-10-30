@@ -25,6 +25,7 @@ export default function RootLayout() {
           <Stack.Screen name="quick-commands" options={{ ...sheet, sheetAllowedDetents: [0.75] }} />
           <Stack.Screen name="snippet/[id]" options={{ ...sheet, sheetAllowedDetents: [0.6] }} />
           <Stack.Screen name="key/import" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
+          <Stack.Screen name="key/[id]" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="git/branch" options={{ ...sheet, sheetAllowedDetents: [0.8] }} />
           <Stack.Screen name="git/revert" options={{ ...sheet, sheetAllowedDetents: [0.65] }} />
           <Stack.Screen name="git/pull" options={{ ...sheet, sheetAllowedDetents: [0.75] }} />

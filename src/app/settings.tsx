@@ -1,4 +1,3 @@
-import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useState } from 'react';
@@ -15,30 +14,13 @@ import { C } from '@/theme';
 export default function Settings() {
   const [faceId, setFaceId] = useState(true);
   const [timeout, setTimeoutVal] = useState<IdleTimeout>(getIdleTimeout);
-  const { keys, servers, generateKey, deleteKey } = useServers();
+  const { keys, servers, generateKey } = useServers();
   const usage = (k: SshKey) => servers.filter((sv) => sv.auth === 'key' && sv.keyId === k.id).length;
-
-  function keyActions(k: SshKey) {
-    Alert.alert(k.name, k.fingerprint, [
-      { text: 'Copier la clé publique', onPress: () => Clipboard.setStringAsync(k.publicKey) },
-      {
-        text: 'Supprimer',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert('Supprimer cette clé ?', `La clé privée sera effacée de cet appareil. ${usage(k)} serveur(s) l’utilisent.`, [
-            { text: 'Annuler', style: 'cancel' },
-            { text: 'Supprimer', style: 'destructive', onPress: () => deleteKey(k.id) },
-          ]),
-      },
-      { text: 'Annuler', style: 'cancel' },
-    ]);
-  }
 
   async function newKey() {
     try {
       const k = await generateKey(`relay_ed25519${keys.length ? `_${keys.length + 1}` : ''}`);
-      await Clipboard.setStringAsync(k.publicKey);
-      Alert.alert('Clé générée', 'La clé publique a été copiée : ajoute-la à ~/.ssh/authorized_keys sur tes serveurs.');
+      router.push(`/key/${k.id}`);
     } catch (e) {
       Alert.alert('Génération impossible', asSshError(e).message);
     }
@@ -90,7 +72,7 @@ export default function Settings() {
         <Card style={{ padding: 0 }}>
           {keys.length === 0 && <Text style={[s.muted, { padding: 14 }]}>Aucune clé. Génère-en une ou importe une clé existante.</Text>}
           {keys.map((k, i) => (
-            <Pressable key={k.id} onPress={() => keyActions(k)} style={[s.row, { padding: 14, borderTopWidth: i ? 1 : 0, borderColor: C.border }]}>
+            <Pressable key={k.id} onPress={() => router.push(`/key/${k.id}`)} style={[s.row, { padding: 14, borderTopWidth: i ? 1 : 0, borderColor: C.border }]}>
               <View style={{ flex: 1 }}>
                 <Mono>{k.name}</Mono>
                 <Mono style={{ fontSize: 10, color: C.dim, marginTop: 2 }} numberOfLines={1}>
