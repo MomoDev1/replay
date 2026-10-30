@@ -53,8 +53,12 @@ for bin in git node gh curl; do command -v "$bin" >/dev/null || die "$bin introu
 gh auth status >/dev/null 2>&1 || die "gh n'est pas connecté (gh auth login)"
 $EAS whoami >/dev/null 2>&1 || die "EAS n'est pas connecté (npx eas-cli@latest login)"
 if [ "$MODE" = local ]; then
+  # SDK Android : celui installé par Homebrew (android-commandlinetools) si ANDROID_HOME n'est pas défini.
+  if [ -z "${ANDROID_HOME:-}" ] && [ -d /opt/homebrew/share/android-commandlinetools ]; then
+    export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+  fi
   # Vérifié avant le bump : un build local impossible ne doit rien pousser
-  command -v java >/dev/null || die "Java introuvable (build local : installe un JDK 17)"
+  java -version >/dev/null 2>&1 || die "Java introuvable (build local : installe un JDK 17)"
   [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME" ] || die "ANDROID_HOME non défini (build local : installe le SDK Android)"
 fi
 
