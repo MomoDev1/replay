@@ -117,7 +117,7 @@ if [ "$MODE" = local ]; then
   step "Build local Android (profil $PROFILE)"
   # Le cache Metro (dans $TMPDIR) garde le chemin absolu des composants 'use dom' : un build précédent
   # le fait pointer vers un autre dossier et le bundle du terminal (xterm.tsx) échoue.
-  rm -rf "${TMPDIR:-/tmp}"/metro-* "${TMPDIR:-/tmp}"/haste-map-*
+  rm -rf "${TMPDIR:-/tmp}"/metro-* "${TMPDIR:-/tmp}"/haste-map-* 2>/dev/null || echo "Cache Metro occupé (autre build en cours ?) : nettoyage partiel"
   $EAS build --platform android --profile "$PROFILE" --non-interactive --local --output "$APK"
   [ -f "$APK" ] || die "Build local terminé sans APK"
   NOTES="Build local (eas build --local)"
