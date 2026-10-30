@@ -115,6 +115,9 @@ APK="$TMP/relay-$NEXT-preprod.apk"
 
 if [ "$MODE" = local ]; then
   step "Build local Android (profil $PROFILE)"
+  # Le cache Metro (dans $TMPDIR) garde le chemin absolu des composants 'use dom' : un build précédent
+  # le fait pointer vers un autre dossier et le bundle du terminal (xterm.tsx) échoue.
+  rm -rf "${TMPDIR:-/tmp}"/metro-* "${TMPDIR:-/tmp}"/haste-map-*
   $EAS build --platform android --profile "$PROFILE" --non-interactive --local --output "$APK"
   [ -f "$APK" ] || die "Build local terminé sans APK"
   NOTES="Build local (eas build --local)"
