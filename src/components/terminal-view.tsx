@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { ChevronLeft, Star, SquareTerminal } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Dot, EnvBadge, Mono, s } from '@/components/ui';
@@ -97,7 +97,8 @@ export function TerminalView() {
         </View>
       )}
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Android is edge-to-edge: the window no longer resizes for the keyboard, so pad on both platforms */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <View style={{ flex: 1 }}>
           <XTerm
             key={session.id}
