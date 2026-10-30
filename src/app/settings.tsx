@@ -1,18 +1,48 @@
+import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card, Mono, s, SectionLabel, Segmented } from '@/components/ui';
-import { sshKeys } from '@/data/mock';
+import { asSshError } from '@/lib/ssh';
+import type { SshKey } from '@/lib/types';
+import { useServers } from '@/store/servers';
+import { getIdleTimeout, setIdleTimeout, type IdleTimeout } from '@/store/session';
 import { C } from '@/theme';
-
-type Timeout = '5' | '15' | '60' | 'never';
 
 export default function Settings() {
   const [faceId, setFaceId] = useState(true);
-  const [timeout, setTimeoutVal] = useState<Timeout>('15');
+  const [timeout, setTimeoutVal] = useState<IdleTimeout>(getIdleTimeout);
+  const { keys, servers, generateKey, deleteKey } = useServers();
+  const usage = (k: SshKey) => servers.filter((sv) => sv.auth === 'key' && sv.keyId === k.id).length;
+
+  function keyActions(k: SshKey) {
+    Alert.alert(k.name, k.fingerprint, [
+      { text: 'Copier la clé publique', onPress: () => Clipboard.setStringAsync(k.publicKey) },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: () =>
+          Alert.alert('Supprimer cette clé ?', `La clé privée sera effacée de cet appareil. ${usage(k)} serveur(s) l’utilisent.`, [
+            { text: 'Annuler', style: 'cancel' },
+            { text: 'Supprimer', style: 'destructive', onPress: () => deleteKey(k.id) },
+          ]),
+      },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
+  }
+
+  async function newKey() {
+    try {
+      const k = await generateKey(`relay_ed25519${keys.length ? `_${keys.length + 1}` : ''}`);
+      await Clipboard.setStringAsync(k.publicKey);
+      Alert.alert('Clé générée', 'La clé publique a été copiée : ajoute-la à ~/.ssh/authorized_keys sur tes serveurs.');
+    } catch (e) {
+      Alert.alert('Génération impossible', asSshError(e).message);
+    }
+  }
 
   return (
     <SafeAreaView style={s.screen}>
@@ -43,7 +73,10 @@ export default function Settings() {
                 { value: 'never', label: 'Jamais' },
               ]}
               value={timeout}
-              onChange={setTimeoutVal}
+              onChange={(v) => {
+                setTimeoutVal(v);
+                setIdleTimeout(v);
+              }}
             />
           </View>
           <View style={s.sep} />
@@ -55,30 +88,26 @@ export default function Settings() {
 
         <SectionLabel>Clés SSH</SectionLabel>
         <Card style={{ padding: 0 }}>
-          {sshKeys.map((k, i) => (
-            <View key={k.name} style={[s.row, { padding: 14, borderTopWidth: i ? 1 : 0, borderColor: C.border }]}>
+          {keys.length === 0 && <Text style={[s.muted, { padding: 14 }]}>Aucune clé. Génère-en une ou importe une clé existante.</Text>}
+          {keys.map((k, i) => (
+            <Pressable key={k.id} onPress={() => keyActions(k)} style={[s.row, { padding: 14, borderTopWidth: i ? 1 : 0, borderColor: C.border }]}>
               <View style={{ flex: 1 }}>
-                <View style={[s.row, { gap: 6 }]}>
-                  <Mono>{k.name}</Mono>
-                  {k.enclave && (
-                    <View style={{ backgroundColor: C.greenBg, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 }}>
-                      <Text style={{ color: C.green, fontSize: 9, fontWeight: '700' }}>SECURE ENCLAVE</Text>
-                    </View>
-                  )}
-                </View>
-                <Mono style={{ fontSize: 10, color: C.dim, marginTop: 2 }}>{k.fp}</Mono>
+                <Mono>{k.name}</Mono>
+                <Mono style={{ fontSize: 10, color: C.dim, marginTop: 2 }} numberOfLines={1}>
+                  {k.type} · {k.fingerprint}
+                </Mono>
               </View>
               <Text style={[s.muted, { fontSize: 12 }]}>
-                {k.servers} serveur{k.servers > 1 ? 's' : ''}
+                {usage(k)} serveur{usage(k) > 1 ? 's' : ''}
               </Text>
-            </View>
+            </Pressable>
           ))}
           <View style={s.sep} />
           <View style={s.row}>
-            <Pressable style={{ flex: 1, padding: 12, alignItems: 'center' }}>
+            <Pressable onPress={newKey} style={{ flex: 1, padding: 12, alignItems: 'center' }}>
               <Text style={{ color: C.accent, fontWeight: '600' }}>+ Générer</Text>
             </Pressable>
-            <Pressable style={{ flex: 1, padding: 12, alignItems: 'center' }}>
+            <Pressable onPress={() => router.push('/key/import')} style={{ flex: 1, padding: 12, alignItems: 'center' }}>
               <Text style={{ color: C.accent, fontWeight: '600' }}>Importer…</Text>
             </Pressable>
           </View>

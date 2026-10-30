@@ -1,33 +1,3 @@
-import type { Env } from '@/theme';
-
-export type ServerStatus = 'online' | 'warning' | 'offline';
-
-export interface Server {
-  id: string;
-  name: string;
-  user: string;
-  host: string;
-  port: number;
-  env: Env;
-  status: ServerStatus;
-  statusLabel: string;
-  lastSeen: string;
-}
-
-export const servers: Server[] = [
-  { id: 'api-prod-01', name: 'api-prod-01', user: 'deploy', host: '51.15.82.10', port: 22, env: 'prod', status: 'online', statusLabel: 'En ligne', lastSeen: 'Connecté il y a 12 min' },
-  { id: 'api-prod-02', name: 'api-prod-02', user: 'deploy', host: '51.15.82.11', port: 22, env: 'prod', status: 'online', statusLabel: 'En ligne', lastSeen: 'Il y a 2 jours' },
-  { id: 'worker-queue', name: 'worker-queue', user: 'ops', host: '10.0.4.22', port: 2222, env: 'prod', status: 'warning', statusLabel: 'Charge élevée · load 7.8', lastSeen: 'Hier, 23:14' },
-  { id: 'staging-eu', name: 'staging-eu', user: 'deploy', host: 'staging.relay.dev', port: 22, env: 'staging', status: 'online', statusLabel: 'En ligne', lastSeen: 'Hier, 18:02' },
-  { id: 'dev-sandbox', name: 'dev-sandbox', user: 'julien', host: '192.168.1.40', port: 22, env: 'dev', status: 'offline', statusLabel: 'Hors ligne', lastSeen: 'Il y a 5 jours' },
-];
-
-export const sshKeys = [
-  { name: 'id_ed25519', desc: 'ED25519 · Secure Enclave · cet iPhone', fp: 'SHA256:Xk9f…q2Q', servers: 4, enclave: true },
-  { name: 'deploy_rsa', desc: 'RSA 4096 · importée le 12/09/2026', fp: 'SHA256:7bLm…Zt8', servers: 2 },
-  { name: 'relay-ci', desc: 'ED25519 · partagée avec l’équipe', fp: 'SHA256:pA3c…9Wd', servers: 1 },
-];
-
 export interface Snippet {
   id: string;
   title: string;
@@ -44,17 +14,6 @@ export const snippets: Snippet[] = [
   { id: 'ps', title: 'État des conteneurs', cmd: 'docker compose ps', vars: [], meta: 'Aucune variable', fav: true },
   { id: 'purge', title: 'Purger une file', cmd: 'redis-cli -n {db} DEL queue:{file}', vars: ['db', 'file'], meta: '2 variables · confirmation' },
   { id: 'nginx', title: 'Recharger Nginx', cmd: 'sudo nginx -t && sudo systemctl reload nginx', vars: [], meta: 'Aucune variable', fav: true },
-];
-
-export const terminalLines: { t: string; c?: 'prompt' | 'green' | 'orange' | 'muted' }[] = [
-  { t: 'deploy@api-prod-01 /var/www/api$ systemctl status api', c: 'prompt' },
-  { t: '● api.service — Relay API', c: 'green' },
-  { t: '   Active: active (running) since 08:12 UTC' },
-  { t: ' Main PID: 18342 (node)  Mem: 412.8M' },
-  { t: 'deploy@api-prod-01 /var/www/api$ git log --oneline -3', c: 'prompt' },
-  { t: 'a41f9c2 (HEAD -> main) fix: TTL cache Redis', c: 'orange' },
-  { t: '9c1e7b0 feat: export CSV factures', c: 'orange' },
-  { t: '3b77d14 chore: bump deps', c: 'orange' },
 ];
 
 export const gitChanges = [

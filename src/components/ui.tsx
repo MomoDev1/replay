@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type
 
 import { C, envColor, mono, type Env } from '@/theme';
 
-export function Mono({ style, children, ...rest }: { style?: StyleProp<TextStyle>; children: ReactNode; numberOfLines?: number }) {
+export function Mono({ style, children, ...rest }: { style?: StyleProp<TextStyle>; children: ReactNode; numberOfLines?: number; selectable?: boolean }) {
   return (
     <Text style={[{ fontFamily: mono, color: C.text, fontSize: 13 }, style]} {...rest}>
       {children}

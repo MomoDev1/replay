@@ -8,6 +8,9 @@
       ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      "relay-ssh": [
+        "./modules/relay-ssh"
       ]
     }
   },
