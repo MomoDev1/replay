@@ -29,8 +29,12 @@ export default function EditSnippet() {
   async function submit() {
     if (!valid || busy) return;
     setBusy(true);
-    await save({ title: title.trim(), cmd: cmd.trim(), fav, serverId }, existing?.id);
-    router.back();
+    try {
+      await save({ title: title.trim(), cmd: cmd.trim(), fav, serverId }, existing?.id);
+      router.back();
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

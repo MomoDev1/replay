@@ -86,14 +86,51 @@ export default function XTerm({ ref, background, foreground, cursor, fontSize = 
     });
     t.onResize(({ cols, rows }) => onResize(cols, rows));
 
+    // xterm.js has no touch scrolling: translate vertical swipes into scrollback moves,
+    // or arrow keys when a full-screen app (less, vim, htop) owns the alternate buffer.
+    const el = host.current!;
+    let lastY: number | null = null;
+    let acc = 0;
+    const onTouchStart = (e: TouchEvent) => {
+      lastY = e.touches.length === 1 ? e.touches[0].clientY : null;
+      acc = 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (lastY === null || e.touches.length !== 1) return;
+      const y = e.touches[0].clientY;
+      acc += lastY - y;
+      lastY = y;
+      e.preventDefault();
+      const lineHeight = el.clientHeight / t.rows;
+      const lines = Math.trunc(acc / lineHeight);
+      if (lines === 0) return;
+      acc -= lines * lineHeight;
+      if (t.buffer.active.type === 'alternate') {
+        const app = t.modes.applicationCursorKeysMode;
+        const seq = lines > 0 ? (app ? '\x1bOB' : '\x1b[B') : app ? '\x1bOA' : '\x1b[A';
+        onInput(bytesToB64(encoder.encode(seq.repeat(Math.abs(lines)))));
+      } else {
+        t.scrollLines(lines);
+      }
+    };
+    const onTouchEnd = () => {
+      lastY = null;
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false, capture: true });
+    el.addEventListener('touchend', onTouchEnd, { capture: true });
+
     const ro = new ResizeObserver(() => fit.fit());
-    ro.observe(host.current!);
+    ro.observe(el);
     fit.fit();
     onResize(t.cols, t.rows);
     onReady();
 
     return () => {
       ro.disconnect();
+      el.removeEventListener('touchstart', onTouchStart, { capture: true });
+      el.removeEventListener('touchmove', onTouchMove, { capture: true });
+      el.removeEventListener('touchend', onTouchEnd, { capture: true });
       t.dispose();
       term.current = null;
     };

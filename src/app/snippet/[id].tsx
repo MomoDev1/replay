@@ -16,7 +16,15 @@ export default function RunSnippet() {
   const session = useSession();
   const sn = snippets.find((x) => x.id === id);
   const vars = sn ? parseVars(sn.cmd) : [];
-  const [vals, setVals] = useState<Record<string, string>>(() => Object.fromEntries(vars.map((v) => [v.name, sn?.lastVars[v.name] ?? v.choices[0] ?? ''])));
+  // A remembered value is dropped if the snippet's choices were edited since.
+  const [vals, setVals] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      vars.map((v) => {
+        const last = sn?.lastVars[v.name];
+        return [v.name, last !== undefined && (!v.choices.length || v.choices.includes(last)) ? last : (v.choices[0] ?? '')];
+      }),
+    ),
+  );
 
   if (!sn) {
     return (

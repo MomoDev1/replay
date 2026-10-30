@@ -16,6 +16,7 @@ export default function QuickCommands() {
   const [history] = useState(getHistory);
   const match = (text: string) => text.toLowerCase().includes(q.toLowerCase());
   const favs = useServerSnippets(session?.server.id).filter((sn) => sn.fav && match(sn.title + sn.cmd));
+  const hist = history.filter(match);
 
   function rerun(cmd: string) {
     if (!session?.open) return;
@@ -47,15 +48,17 @@ export default function QuickCommands() {
             </View>
           ))}
         {tab === 'hist' &&
-          history.filter(match).map((h) => (
+          hist.map((h) => (
             <Pressable key={h} onPress={() => rerun(h)} disabled={!session?.open}>
               <Mono style={{ fontSize: 12, color: session?.open ? C.text : C.dim }} numberOfLines={1}>
                 $ {h}
               </Mono>
             </Pressable>
           ))}
-        {((tab === 'fav' && !favs.length) || (tab === 'hist' && !history.length)) && (
-          <Text style={[s.muted, { textAlign: 'center' }]}>{tab === 'fav' ? 'Aucun favori. Ajoute une étoile à un snippet.' : 'Aucune commande lancée depuis un snippet.'}</Text>
+        {((tab === 'fav' && !favs.length) || (tab === 'hist' && !hist.length)) && (
+          <Text style={[s.muted, { textAlign: 'center' }]}>
+            {q ? 'Aucun résultat.' : tab === 'fav' ? 'Aucun favori. Ajoute une étoile à un snippet.' : 'Aucune commande lancée depuis un snippet.'}
+          </Text>
         )}
         <Pressable onPress={() => router.replace('/snippets')} style={{ alignItems: 'center', marginTop: 8 }}>
           <Text style={{ color: C.accent, fontWeight: '600' }}>Gérer les snippets →</Text>

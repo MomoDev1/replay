@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Play } from 'lucide-react-native';
+import { Play, Star } from 'lucide-react-native';
 import { Fragment } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
@@ -69,11 +69,18 @@ export function runSnippet(sn: Snippet) {
   router.push(`/snippet/${sn.id}`);
 }
 
-export function SnippetRow({ sn, showMeta = true }: { sn: Snippet; showMeta?: boolean }) {
+export function SnippetRow({ sn, showMeta = true, onToggleFav }: { sn: Snippet; showMeta?: boolean; onToggleFav?: () => void }) {
   return (
     <View style={[s.row, { gap: 12 }]}>
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={{ color: C.text, fontWeight: '600' }}>{sn.title}</Text>
+        <View style={[s.row, { gap: 6 }]}>
+          {onToggleFav && (
+            <Pressable onPress={onToggleFav} hitSlop={10}>
+              <Star size={15} color={sn.fav ? C.orange : C.dim} fill={sn.fav ? C.orange : 'transparent'} />
+            </Pressable>
+          )}
+          <Text style={{ color: C.text, fontWeight: '600', flex: 1 }}>{sn.title}</Text>
+        </View>
         <SnippetCmd cmd={sn.cmd} numberOfLines={showMeta ? undefined : 1} />
         {showMeta && <Text style={{ color: C.dim, fontSize: 11 }}>{snippetMeta(sn)}</Text>}
       </View>

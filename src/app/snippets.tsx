@@ -20,21 +20,26 @@ export default function Snippets() {
   const globals = snippets.filter((sn) => sn.serverId === null);
   const data = scope === 'server' ? mine : globals;
 
+  // Android shows at most 3 buttons: favourites are toggled with the star on the row instead.
   function actions(sn: Snippet) {
-    Alert.alert(sn.title, undefined, [
-      { text: 'Modifier', onPress: () => router.push({ pathname: '/snippet/edit', params: { id: sn.id } }) },
-      { text: sn.fav ? 'Retirer des favoris' : 'Ajouter aux favoris', onPress: () => toggleFav(sn.id) },
-      {
-        text: 'Supprimer',
-        style: 'destructive',
-        onPress: () =>
-          Alert.alert('Supprimer ce snippet ?', sn.title, [
-            { text: 'Annuler', style: 'cancel' },
-            { text: 'Supprimer', style: 'destructive', onPress: () => remove(sn.id) },
-          ]),
-      },
-      { text: 'Annuler', style: 'cancel' },
-    ]);
+    Alert.alert(
+      sn.title,
+      undefined,
+      [
+        { text: 'Modifier', onPress: () => router.push({ pathname: '/snippet/edit', params: { id: sn.id } }) },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () =>
+            Alert.alert('Supprimer ce snippet ?', sn.title, [
+              { text: 'Annuler', style: 'cancel' },
+              { text: 'Supprimer', style: 'destructive', onPress: () => remove(sn.id) },
+            ]),
+        },
+        { text: 'Annuler', style: 'cancel' },
+      ],
+      { cancelable: true },
+    );
   }
 
   const options = [
@@ -70,7 +75,7 @@ export default function Snippets() {
         renderItem={({ item }) => (
           <Pressable onLongPress={() => actions(item)}>
             <Card>
-              <SnippetRow sn={item} />
+              <SnippetRow sn={item} onToggleFav={() => toggleFav(item.id)} />
             </Card>
           </Pressable>
         )}
