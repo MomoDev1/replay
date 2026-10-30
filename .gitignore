@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Gradle caches from opening native modules in Android Studio
+.gradle/
