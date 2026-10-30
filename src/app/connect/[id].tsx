@@ -38,7 +38,7 @@ function hints(err: SshError, sv: Server): [string, string][] {
     case 'HOST_KEY_MISMATCH':
       return [[C.red, 'Le serveur a peut-être été réinstallé… ou la connexion est interceptée.'], [C.dim, 'Vérifie l’empreinte auprès de l’administrateur avant de continuer.']];
     case 'UNSUPPORTED':
-      return [[C.orange, 'Installe le dev build Android de Relay (Expo Go ne contient pas le module SSH).']];
+      return [[C.orange, 'Installe le dev build Android de Hop (Expo Go ne contient pas le module SSH).']];
     default:
       return [];
   }
