@@ -44,3 +44,4 @@ example
 
 # Gradle caches from opening native modules in Android Studio
 .gradle/
+modules/*/android/build/
