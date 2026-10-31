@@ -33,6 +33,8 @@ export type GitStatus = {
 
 export type Commit = { sha: string; full: string; msg: string; author: string; time: number };
 export type Branch = { name: string; remote: boolean; sha: string; time: number; author: string; current: boolean };
+/** `commit` is the tagged commit (peeled for annotated tags). */
+export type Tag = { name: string; commit: string; sha: string; time: number; msg: string; annotated: boolean };
 export type Stash = { ref: string; msg: string; time: number };
 export type DiffLine = { o?: number; n?: number; t: string; k?: '+' | '-' | '@' };
 
@@ -130,6 +132,19 @@ export async function branches(repo: string): Promise<Branch[]> {
       return { name: ref.replace(/^refs\/(heads|remotes)\//, ''), remote, sha, time: Number(ct) * 1000, author, current: head === '*' };
     })
     .filter((b) => !(b.remote && b.name.endsWith('/HEAD')));
+}
+
+export async function tags(repo: string): Promise<Tag[]> {
+  const r = await git(repo, `for-each-ref --sort=-creatordate --format='%(refname:lstrip=2)%09%(objecttype)%09%(objectname)%09%(*objectname)%09%(creatordate:unix)%09%(contents:subject)' refs/tags`, { allowFail: true });
+  if (r.exitCode !== 0) return [];
+  return r.stdout
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => {
+      const [name, type, oid, peeled, ct, ...msg] = l.split('\t');
+      const commit = peeled || oid;
+      return { name, commit, sha: commit.slice(0, 7), time: Number(ct) * 1000, msg: type === 'tag' ? msg.join('\t') : '', annotated: type === 'tag' };
+    });
 }
 
 export async function stashes(repo: string): Promise<Stash[]> {

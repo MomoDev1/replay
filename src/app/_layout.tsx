@@ -34,6 +34,7 @@ export default function RootLayout() {
           <Stack.Screen name="git/pull" options={{ ...sheet, sheetAllowedDetents: [0.75] }} />
           <Stack.Screen name="git/commit" options={{ ...sheet, sheetAllowedDetents: [0.8] }} />
           <Stack.Screen name="git/stash" options={{ ...sheet, sheetAllowedDetents: [0.7] }} />
+          <Stack.Screen name="git/tags" options={{ ...sheet, sheetAllowedDetents: [0.8] }} />
           <Stack.Screen name="git/repo" options={{ ...sheet, sheetAllowedDetents: [0.8] }} />
           <Stack.Screen name="monitoring/logs" options={{ ...sheet, sheetAllowedDetents: [0.85] }} />
           <Stack.Screen name="code/edit" />
