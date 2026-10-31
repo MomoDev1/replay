@@ -43,7 +43,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Hop utilise Face ID pour confirmer les déploiements et les commandes sur les serveurs de production."
+          "faceIDPermission": "Hop utilise Face ID pour confirmer les actions sensibles sur les serveurs de production."
         }
       ],
       "./modules/relay-ssh/app.plugin.js"
