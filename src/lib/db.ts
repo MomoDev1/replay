@@ -131,13 +131,21 @@ export const forgetKnownHost = (db: SQLiteDatabase, host: string, port: number) 
 
 type SnippetRow = { id: string; server_id: string | null; title: string; cmd: string; fav: number; last_vars: string | null; last_used_at: number | null; created_at: number };
 
+function parseVars(json: string | null): Record<string, string> {
+  try {
+    return json ? JSON.parse(json) : {};
+  } catch {
+    return {};
+  }
+}
+
 export const toSnippet = (r: SnippetRow): Snippet => ({
   id: r.id,
   serverId: r.server_id,
   title: r.title,
   cmd: r.cmd,
   fav: !!r.fav,
-  lastVars: r.last_vars ? JSON.parse(r.last_vars) : {},
+  lastVars: parseVars(r.last_vars),
   lastUsedAt: r.last_used_at,
   createdAt: r.created_at,
 });

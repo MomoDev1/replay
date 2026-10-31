@@ -80,6 +80,31 @@ export function sendB64(b64: string) {
 
 export const sendText = (text: string) => sendB64(utf8ToB64(text));
 
+let pasteHandler: ((text: string) => void) | null = null;
+
+/** The terminal view registers how to paste, so xterm can honour the shell's bracketed-paste mode. */
+export function setPasteHandler(handler: (text: string) => void) {
+  pasteHandler = handler;
+  return () => {
+    if (pasteHandler === handler) pasteHandler = null;
+  };
+}
+
+/**
+ * Types `text` at the prompt WITHOUT pressing Enter: the user reviews it and runs it from the terminal.
+ * Multi-line text is pasted so that the shell does not run each line on its own.
+ */
+export function pasteText(text: string) {
+  if (!current?.open) return false;
+  const t = text.replace(/[\r\n]+$/, '');
+  if (!t) return false;
+  if (pasteHandler) pasteHandler(t);
+  // No terminal mounted: ^V before each newline keeps it literal (see XTerm.paste).
+  else sendText(t.replace(/\r\n|\r|\n/g, '\x16\n'));
+  touch();
+  return true;
+}
+
 /** Runs a command on its own channel of the open connection (the terminal is untouched). */
 export async function exec(command: string, timeoutMs?: number) {
   if (!current?.open || !RelaySsh) throw new SshError('NO_SESSION', 'Aucune session SSH ouverte.');

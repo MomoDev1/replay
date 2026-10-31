@@ -6,13 +6,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Dot, EnvBadge, Mono, s } from '@/components/ui';
 import XTerm, { type XTermRef } from '@/components/xterm';
-import { closeSession, resizeSession, sendB64, sendText, subscribeData, useSession } from '@/store/session';
+import { closeSession, resizeSession, sendB64, sendText, setPasteHandler, subscribeData, useSession } from '@/store/session';
 import { C } from '@/theme';
 
 const KEYS: [string, string][] = [
   ['Ctrl', ''],
   ['Esc', '\x1b'],
   ['Tab', '\t'],
+  // Runs a pasted snippet without having to open the keyboard (iOS cannot raise it programmatically).
+  ['↵', '\r'],
   ['^C', '\x03'],
   ['←', '\x1b[D'],
   ['↑', '\x1b[A'],
@@ -31,6 +33,16 @@ export function TerminalView() {
   const [ctrl, setCtrl] = useState(false);
 
   useEffect(() => () => unsub.current?.(), []);
+
+  // Snippets and history are pasted through xterm (never executed): the user presses Enter themselves.
+  useEffect(
+    () =>
+      setPasteHandler((text) => {
+        setCtrl(false);
+        term.current?.paste(text);
+      }),
+    [],
+  );
 
   function key(label: string, seq: string) {
     if (label === 'Ctrl') {
