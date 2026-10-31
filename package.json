@@ -1,6 +1,6 @@
 {
   "name": "relay",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo/ui": "~58.0.25",
