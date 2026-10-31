@@ -5,7 +5,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { PlayButton, plainCmd, runSnippet } from '@/components/snippet-row';
 import { Mono, s, Segmented, SheetHeader } from '@/components/ui';
-import { sendText, useSession } from '@/store/session';
+import { pasteText, useSession } from '@/store/session';
 import { getHistory, pushHistory, useServerSnippets } from '@/store/snippets';
 import { C } from '@/theme';
 
@@ -18,9 +18,9 @@ export default function QuickCommands() {
   const favs = useServerSnippets(session?.server.id).filter((sn) => sn.fav && match(sn.title + sn.cmd));
   const hist = history.filter(match);
 
-  function rerun(cmd: string) {
-    if (!session?.open) return;
-    sendText(cmd + '\r');
+  /** Pastes the command at the prompt; it only runs when the user presses Enter in the terminal. */
+  function paste(cmd: string) {
+    if (!pasteText(cmd)) return;
     pushHistory(cmd);
     router.back();
   }
@@ -49,7 +49,7 @@ export default function QuickCommands() {
           ))}
         {tab === 'hist' &&
           hist.map((h) => (
-            <Pressable key={h} onPress={() => rerun(h)} disabled={!session?.open}>
+            <Pressable key={h} onPress={() => paste(h)} disabled={!session?.open}>
               <Mono style={{ fontSize: 12, color: session?.open ? C.text : C.dim }} numberOfLines={1}>
                 $ {h}
               </Mono>
@@ -57,7 +57,7 @@ export default function QuickCommands() {
           ))}
         {((tab === 'fav' && !favs.length) || (tab === 'hist' && !hist.length)) && (
           <Text style={[s.muted, { textAlign: 'center' }]}>
-            {q ? 'Aucun résultat.' : tab === 'fav' ? 'Aucun favori. Ajoute une étoile à un snippet.' : 'Aucune commande lancée depuis un snippet.'}
+            {q ? 'Aucun résultat.' : tab === 'fav' ? 'Aucun favori. Ajoute une étoile à un snippet.' : 'Aucune commande collée depuis un snippet.'}
           </Text>
         )}
         <Pressable onPress={() => router.replace('/snippets')} style={{ alignItems: 'center', marginTop: 8 }}>

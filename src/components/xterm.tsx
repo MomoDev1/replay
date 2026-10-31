@@ -15,6 +15,8 @@ export interface XTermRef extends DOMImperativeFactory {
   write: (...args: JSONValue[]) => void;
   /** setCtrl(on: boolean): when on, the next letter typed is sent as Ctrl+letter. */
   setCtrl: (...args: JSONValue[]) => void;
+  /** paste(text: string): types text at the prompt like a clipboard paste (bracketed if the shell asked for it), without Enter. */
+  paste: (...args: JSONValue[]) => void;
   focus: () => void;
   clear: () => void;
 }
@@ -51,6 +53,14 @@ export default function XTerm({ ref, background, foreground, cursor, fontSize = 
       setCtrl(on) {
         ctrl.current = on === true;
         term.current?.focus();
+      },
+      paste(text) {
+        const t = term.current;
+        if (!t) return;
+        // A latched Ctrl must not turn a one-character paste into a control code.
+        ctrl.current = false;
+        t.paste(text as string);
+        t.focus();
       },
       focus() {
         term.current?.focus();

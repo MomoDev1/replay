@@ -3,7 +3,7 @@ import { Star } from 'lucide-react-native';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import { parseVars } from '@/components/snippet-row';
+import { asciiPunct, parseVars } from '@/components/snippet-row';
 import { Button, Mono, s, Segmented, SheetHeader } from '@/components/ui';
 import { useSession } from '@/store/session';
 import { useSnippets } from '@/store/snippets';
@@ -30,7 +30,7 @@ export default function EditSnippet() {
     if (!valid || busy) return;
     setBusy(true);
     try {
-      await save({ title: title.trim(), cmd: cmd.trim(), fav, serverId }, existing?.id);
+      await save({ title: title.trim(), cmd: asciiPunct(cmd.trim()), fav, serverId }, existing?.id);
       router.back();
     } finally {
       setBusy(false);
@@ -40,7 +40,7 @@ export default function EditSnippet() {
   return (
     <View style={s.sheet}>
       <SheetHeader title={existing ? 'Modifier le snippet' : 'Nouveau snippet'} />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 14, paddingBottom: 20 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ gap: 14, paddingBottom: 20 }}>
         <View>
           <Text style={[s.section, { marginBottom: 8 }]}>TITRE</Text>
           <TextInput value={title} onChangeText={setTitle} placeholder="Redémarrer un service" placeholderTextColor={C.dim} style={input} />
@@ -53,6 +53,8 @@ export default function EditSnippet() {
             multiline
             autoCapitalize="none"
             autoCorrect={false}
+            spellCheck={false}
+            autoComplete="off"
             placeholder="sudo systemctl restart {service:api|nginx}"
             placeholderTextColor={C.dim}
             style={[input, { fontFamily: mono, fontSize: 13, minHeight: 70, textAlignVertical: 'top' }]}

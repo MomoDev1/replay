@@ -7,24 +7,38 @@ import { Mono, s } from '@/components/ui';
 import type { Snippet } from '@/lib/types';
 import { C } from '@/theme';
 
-const VAR = /\{(\w+)(?::([^}]*))?\}/g;
+// `${HOME}` is shell parameter expansion, not a snippet variable: the optional `$` is captured so it can be skipped.
+const VAR = /(\$?)\{(\w+)(?::([^}]*))?\}/g;
+const VAR_SPLIT = /(\$?\{\w+(?::[^}]*)?\})/;
 
 export type SnippetVar = { name: string; choices: string[] };
 
 /** Variables in order of first appearance; choices come from the first `{name:a|b}` occurrence. */
 export function parseVars(cmd: string): SnippetVar[] {
   const vars = new Map<string, string[]>();
-  for (const [, name, choices] of cmd.matchAll(VAR)) {
+  for (const [, dollar, name, choices] of cmd.matchAll(VAR)) {
+    if (dollar) continue;
     const list = choices ? choices.split('|').filter(Boolean) : [];
     if (!vars.has(name) || (!vars.get(name)!.length && list.length)) vars.set(name, list);
   }
   return [...vars].map(([name, choices]) => ({ name, choices }));
 }
 
-export const resolveCmd = (cmd: string, vals: Record<string, string>) => cmd.replace(VAR, (_, v: string) => vals[v] || v);
+export const resolveCmd = (cmd: string, vals: Record<string, string>) => cmd.replace(VAR, (m, dollar: string, v: string) => (dollar ? m : vals[v] || v));
 
 /** Command with variables reduced to their name, for one-line previews. */
-export const plainCmd = (cmd: string) => cmd.replace(VAR, '$1');
+export const plainCmd = (cmd: string) => cmd.replace(VAR, (m, dollar: string, v: string) => (dollar ? m : v));
+
+/**
+ * iOS "smart punctuation" rewrites ' " -- ... into ’ ” — … even with autoCorrect off,
+ * and a shell rejects them. Applied when a snippet is saved and when it is pasted.
+ */
+export const asciiPunct = (text: string) =>
+  text
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/\u2014/g, '--')
+    .replace(/\u2026/g, '...');
 
 function ago(ts: number) {
   const days = Math.floor((Date.now() - ts) / 86_400_000);
@@ -41,11 +55,11 @@ export function snippetMeta(sn: Snippet) {
 }
 
 export function SnippetCmd({ cmd, numberOfLines }: { cmd: string; numberOfLines?: number }) {
-  const parts = cmd.split(/(\{\w+(?::[^}]*)?\})/);
+  const parts = cmd.split(VAR_SPLIT);
   return (
     <Mono style={{ fontSize: 12, color: C.muted }} numberOfLines={numberOfLines}>
       {parts.map((p, i) =>
-        i % 2 ? (
+        i % 2 && p[0] !== '$' ? (
           <Text key={i} style={{ color: C.accent, backgroundColor: C.accentBg }}>
             {p.slice(1, -1).split(':')[0]}
           </Text>
