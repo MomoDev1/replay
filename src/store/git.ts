@@ -11,6 +11,7 @@ export type GitState = {
   status: G.GitStatus | null;
   commits: G.Commit[];
   stashes: G.Stash[];
+  tags: G.Tag[];
   fetchedAt: number | null;
   loading: boolean;
   error: string | null;
@@ -32,7 +33,7 @@ export const repoFor = (server: Server) => Storage.getItemSync(repoKey(server.id
 
 function reset(serverId: string, repo: string) {
   seq++;
-  state = { serverId, repo, status: null, commits: [], stashes: [], fetchedAt: null, loading: false, error: null };
+  state = { serverId, repo, status: null, commits: [], stashes: [], tags: [], fetchedAt: null, loading: false, error: null };
   listeners.forEach((l) => l());
   return refresh();
 }
@@ -55,10 +56,10 @@ export async function refresh() {
   set({ loading: true });
   try {
     const status = await G.status(repo);
-    const [commits, stashes, fetchedAt] = await Promise.all([G.log(repo), G.stashes(repo), G.fetchedAt(repo)]);
-    if (id === seq) set({ status, commits, stashes, fetchedAt, error: null, loading: false });
+    const [commits, stashes, tags, fetchedAt] = await Promise.all([G.log(repo), G.stashes(repo), G.tags(repo), G.fetchedAt(repo)]);
+    if (id === seq) set({ status, commits, stashes, tags, fetchedAt, error: null, loading: false });
   } catch (e) {
-    if (id === seq) set({ status: null, commits: [], stashes: [], error: (e as Error).message, loading: false });
+    if (id === seq) set({ status: null, commits: [], stashes: [], tags: [], error: (e as Error).message, loading: false });
   }
 }
 

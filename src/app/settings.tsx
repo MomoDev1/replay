@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useState } from 'react';
@@ -93,6 +94,12 @@ export default function Settings() {
               <Text style={{ color: C.accent, fontWeight: '600' }}>Importer…</Text>
             </Pressable>
           </View>
+        </Card>
+
+        <SectionLabel>À propos</SectionLabel>
+        <Card style={[s.row, { padding: 14, justifyContent: 'space-between' }]}>
+          <Text style={{ color: C.text }}>Version</Text>
+          <Mono style={{ color: C.muted }}>{`v${Constants.expoConfig?.version ?? '?'}`}</Mono>
         </Card>
       </ScrollView>
     </SafeAreaView>

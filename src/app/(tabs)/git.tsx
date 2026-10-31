@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Archive, ArrowDown, ArrowUp, Check, ChevronRight, FolderGit2, GitBranch, GitCommitHorizontal, RefreshCw, RotateCcw } from 'lucide-react-native';
+import { Archive, ArrowDown, ArrowUp, Check, ChevronRight, FolderGit2, GitBranch, GitCommitHorizontal, RefreshCw, RotateCcw, Tag } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -195,19 +195,39 @@ export default function GitScreen() {
               </Card>
             </Pressable>
 
+            <Pressable onPress={() => router.push('/git/tags')}>
+              <Card style={[s.row, { gap: 10, marginTop: 8, padding: 12 }]}>
+                <Tag size={16} color={C.muted} />
+                <Text style={{ color: C.text }}>Tags</Text>
+                <Mono style={{ color: C.green, fontSize: 12, flex: 1, textAlign: 'right' }} numberOfLines={1}>
+                  {g.tags[0]?.name ?? ''}
+                </Mono>
+                <Mono style={{ color: C.muted, fontSize: 12 }}>{g.tags.length}</Mono>
+                <ChevronRight size={14} color={C.dim} />
+              </Card>
+            </Pressable>
+
             <SectionLabel>Derniers commits</SectionLabel>
             <Card style={{ padding: g.commits.length ? 0 : 14 }}>
               {!g.commits.length && <Text style={s.muted}>Aucun commit.</Text>}
               {g.commits.map((c, i) => (
                 <View key={c.full} style={[s.row, { padding: 12, gap: 10, borderTopWidth: i ? 1 : 0, borderColor: C.border }]}>
                   <View style={{ flex: 1, gap: 2 }}>
-                    <View style={[s.row, { gap: 6 }]}>
+                    <View style={[s.row, { gap: 6, flexWrap: 'wrap' }]}>
                       <Mono style={{ color: C.orange, fontSize: 12 }}>{c.sha}</Mono>
                       {i === 0 && (
                         <View style={{ backgroundColor: C.accentBg, borderRadius: 4, paddingHorizontal: 4 }}>
                           <Text style={{ color: C.accent, fontSize: 9, fontWeight: '700' }}>HEAD</Text>
                         </View>
                       )}
+                      {g.tags
+                        .filter((t) => t.commit === c.full)
+                        .map((t) => (
+                          <View key={t.name} style={[s.row, { gap: 3, backgroundColor: C.green + '22', borderRadius: 4, paddingHorizontal: 4 }]}>
+                            <Tag size={9} color={C.green} />
+                            <Text style={{ color: C.green, fontSize: 9, fontWeight: '700' }}>{t.name}</Text>
+                          </View>
+                        ))}
                     </View>
                     <Text style={{ color: C.text, fontSize: 13 }}>{c.msg}</Text>
                     <Text style={{ color: C.dim, fontSize: 11 }}>
