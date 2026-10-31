@@ -274,7 +274,7 @@ export default function XTerm({ ref, background, foreground, cursor, accent, mat
     t.onScroll(placeHandles);
     t.onRender(placeHandles);
 
-    // xterm.js has no touch support. One finger: swipe scrolls (or sends arrows to full-screen apps),
+    // xterm.js has no touch support. One finger: swipe scrolls (or sends wheel events / arrows to full-screen apps),
     // long press selects a word and enters selection mode. In selection mode one finger selects
     // (drag a handle to adjust an end, tap a word, double tap a line) and two fingers scroll.
     type Mode = 'idle' | 'scroll' | 'scroll2' | 'select';
@@ -292,13 +292,35 @@ export default function XTerm({ ref, background, foreground, cursor, accent, mat
     let edgeTimer: ReturnType<typeof setInterval> | null = null;
     let finger = { x: 0, y: 0 };
 
+    // xterm.js exposes the mouse tracking mode but not its encoding: watch for SGR (?1006) ourselves.
+    let sgrMouse = false;
+    const has1006 = (params: (number | number[])[]) => params.some((p) => p === 1006);
+    const sgrOn = t.parser.registerCsiHandler({ prefix: '?', final: 'h' }, (params) => {
+      if (has1006(params)) sgrMouse = true;
+      return false;
+    });
+    const sgrOff = t.parser.registerCsiHandler({ prefix: '?', final: 'l' }, (params) => {
+      if (has1006(params)) sgrMouse = false;
+      return false;
+    });
+
     const scrollBy = (dy: number) => {
       acc += dy;
       const lh = lineHeight();
       const lines = Math.trunc(acc / lh);
       if (lines === 0) return;
       acc -= lines * lh;
-      if (t.buffer.active.type === 'alternate' && !selecting.current) {
+      if (t.modes.mouseTrackingMode !== 'none' && !selecting.current) {
+        // The app (Claude Code, vim, less, htop…) handles the mouse itself: send wheel events, as a real
+        // trackpad would. Arrows would move through its history or cursor instead of scrolling.
+        // Swiping up (dy > 0) reveals what is below, like a wheel scrolled down.
+        const { r, w, h } = metrics();
+        const col = Math.min(t.cols, Math.max(1, Math.floor((finger.x - r.left) / w) + 1));
+        const row = Math.min(t.rows, Math.max(1, Math.floor((finger.y - r.top) / h) + 1));
+        const btn = lines > 0 ? 65 : 64;
+        const seq = sgrMouse ? `\x1b[<${btn};${col};${row}M` : `\x1b[M${String.fromCharCode(32 + btn, 32 + Math.min(col, 223), 32 + Math.min(row, 223))}`;
+        onInput(bytesToB64(encoder.encode(seq.repeat(Math.abs(lines)))));
+      } else if (t.buffer.active.type === 'alternate' && !selecting.current) {
         const app = t.modes.applicationCursorKeysMode;
         const seq = lines > 0 ? (app ? '\x1bOB' : '\x1b[B') : app ? '\x1bOA' : '\x1b[A';
         onInput(bytesToB64(encoder.encode(seq.repeat(Math.abs(lines)))));
@@ -455,6 +477,8 @@ export default function XTerm({ ref, background, foreground, cursor, accent, mat
 
     return () => {
       ro.disconnect();
+      sgrOn.dispose();
+      sgrOff.dispose();
       cancelLongPress();
       stopEdgeScroll();
       if (selTimer) clearTimeout(selTimer);
