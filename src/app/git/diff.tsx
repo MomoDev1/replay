@@ -116,6 +116,9 @@ export default function Diff() {
       </ScrollView>
       <View style={[s.row, { gap: 8, padding: 16 }]}>
         {file && <Button title="Annuler les modifs" variant="outlineDanger" style={{ flex: 1 }} onPress={discard} />}
+        {file && file.x !== 'D' && file.y !== 'D' && (
+          <Button title="Éditer" variant="ghost" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/code/edit', params: { path: file.path, base: currentRepo() } })} />
+        )}
         {next && <Button title="Fichier suivant →" variant="ghost" style={{ flex: 1 }} onPress={() => router.setParams({ path: next.path })} />}
       </View>
     </SafeAreaView>
