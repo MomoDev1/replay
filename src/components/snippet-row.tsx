@@ -79,8 +79,10 @@ export function PlayButton({ onPress, size = 40 }: { onPress: () => void; size?:
   );
 }
 
-export function runSnippet(sn: Snippet) {
-  router.push(`/snippet/${sn.id}`);
+/** From another sheet pass `replace`: stacking a form sheet on a form sheet misbehaves on Android. */
+export function runSnippet(sn: Snippet, { replace = false } = {}) {
+  if (replace) router.replace(`/snippet/${sn.id}`);
+  else router.push(`/snippet/${sn.id}`);
 }
 
 export function SnippetRow({ sn, showMeta = true, onToggleFav }: { sn: Snippet; showMeta?: boolean; onToggleFav?: () => void }) {

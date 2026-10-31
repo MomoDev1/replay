@@ -92,14 +92,15 @@ export function setPasteHandler(handler: (text: string) => void) {
 
 /**
  * Types `text` at the prompt WITHOUT pressing Enter: the user reviews it and runs it from the terminal.
- * Multi-line text goes through bracketed paste so the shell does not run each line on its own.
+ * Multi-line text is pasted so that the shell does not run each line on its own.
  */
 export function pasteText(text: string) {
   if (!current?.open) return false;
   const t = text.replace(/[\r\n]+$/, '');
   if (!t) return false;
   if (pasteHandler) pasteHandler(t);
-  else sendText(/[\r\n]/.test(t) ? `\x1b[200~${t}\x1b[201~` : t);
+  // No terminal mounted: ^V before each newline keeps it literal (see XTerm.paste).
+  else sendText(t.replace(/\r\n|\r|\n/g, '\x16\n'));
   touch();
   return true;
 }

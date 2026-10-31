@@ -44,7 +44,7 @@ export default function QuickCommands() {
                   {plainCmd(sn.cmd)}
                 </Mono>
               </View>
-              <PlayButton size={32} onPress={() => runSnippet(sn)} />
+              <PlayButton size={32} onPress={() => runSnippet(sn, { replace: true })} />
             </View>
           ))}
         {tab === 'hist' &&

@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { asciiPunct, parseVars, resolveCmd } from '@/components/snippet-row';
 import { Button, EnvBadge, Mono, s, SheetHeader } from '@/components/ui';
+import { useSheetKeyboardInset } from '@/hooks/use-sheet-keyboard';
 import type { Snippet } from '@/lib/types';
 import { pasteText, useSession } from '@/store/session';
 import { pushHistory, useSnippets } from '@/store/snippets';
@@ -29,6 +30,7 @@ export default function RunSnippet() {
 function RunForm({ sn }: { sn: Snippet }) {
   const { markUsed } = useSnippets();
   const session = useSession();
+  const kb = useSheetKeyboardInset();
   const vars = parseVars(sn.cmd);
   // A remembered value is dropped if the snippet's choices were edited since.
   const [vals, setVals] = useState<Record<string, string>>(() =>
@@ -54,6 +56,33 @@ function RunForm({ sn }: { sn: Snippet }) {
     await markUsed(sn.id, vals);
   }
 
+  const footer = (
+    <>
+      {!open ? (
+        <View style={[s.row, { gap: 8, backgroundColor: C.surface2, borderRadius: 10, padding: 10, marginTop: 16 }]}>
+          <Text style={{ color: C.muted, fontSize: 12, flex: 1 }}>Aucune session ouverte : connecte-toi à un serveur pour coller ce snippet dans le terminal.</Text>
+        </View>
+      ) : (
+        prod && (
+          <View style={[s.row, { gap: 8, backgroundColor: C.orangeBg, borderRadius: 10, padding: 10, marginTop: 16 }]}>
+            <TriangleAlert size={14} color={C.orange} />
+            <Text style={{ color: C.text, fontSize: 12, flex: 1 }}>Serveur de production : relis la commande avant d’appuyer sur Entrée (ou ↵).</Text>
+          </View>
+        )
+      )}
+      {open ? (
+        <>
+          <Button title="Coller dans le terminal" icon={<ClipboardPaste size={14} color="#fff" />} style={{ marginTop: 16, opacity: missing.length ? 0.5 : 1 }} onPress={paste} />
+          <Text style={{ color: C.dim, fontSize: 11, textAlign: 'center', marginTop: 8 }}>
+            {missing.length ? `À renseigner : ${missing.join(', ')}` : 'La commande n’est pas exécutée : appuie sur Entrée (ou ↵) dans le terminal.'}
+          </Text>
+        </>
+      ) : (
+        <Button title={server ? 'Se reconnecter' : 'Choisir un serveur'} style={{ marginTop: 16 }} onPress={() => (server ? router.replace(`/connect/${server.id}`) : router.dismissTo('/'))} />
+      )}
+    </>
+  );
+
   return (
     <View style={s.sheet}>
       <SheetHeader
@@ -67,7 +96,8 @@ function RunForm({ sn }: { sn: Snippet }) {
           )
         }
       />
-      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      {/* Android: with the keyboard open the footer scrolls with the form, otherwise it sits behind the keyboard. */}
+      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: kb }}>
         <View style={{ backgroundColor: C.bg, borderRadius: 10, padding: 12 }}>
           <Mono style={{ fontSize: 12 }} selectable>
             $ {resolved}
@@ -101,29 +131,9 @@ function RunForm({ sn }: { sn: Snippet }) {
             )}
           </View>
         ))}
+        {!!kb && footer}
       </ScrollView>
-      {!open ? (
-        <View style={[s.row, { gap: 8, backgroundColor: C.surface2, borderRadius: 10, padding: 10, marginTop: 16 }]}>
-          <Text style={{ color: C.muted, fontSize: 12, flex: 1 }}>Aucune session ouverte : connecte-toi à un serveur pour coller ce snippet dans le terminal.</Text>
-        </View>
-      ) : (
-        prod && (
-          <View style={[s.row, { gap: 8, backgroundColor: C.orangeBg, borderRadius: 10, padding: 10, marginTop: 16 }]}>
-            <TriangleAlert size={14} color={C.orange} />
-            <Text style={{ color: C.text, fontSize: 12, flex: 1 }}>Serveur de production : relis la commande avant d’appuyer sur Entrée.</Text>
-          </View>
-        )
-      )}
-      {open ? (
-        <>
-          <Button title="Coller dans le terminal" icon={<ClipboardPaste size={14} color="#fff" />} style={{ marginTop: 16, opacity: missing.length ? 0.5 : 1 }} onPress={paste} />
-          <Text style={{ color: C.dim, fontSize: 11, textAlign: 'center', marginTop: 8 }}>
-            {missing.length ? `À renseigner : ${missing.join(', ')}` : 'La commande n’est pas exécutée : appuie sur Entrée dans le terminal.'}
-          </Text>
-        </>
-      ) : (
-        <Button title={server ? 'Se reconnecter' : 'Choisir un serveur'} style={{ marginTop: 16 }} onPress={() => (server ? router.replace(`/connect/${server.id}`) : router.dismissTo('/'))} />
-      )}
+      {!kb && footer}
     </View>
   );
 }

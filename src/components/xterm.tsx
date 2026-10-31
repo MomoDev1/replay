@@ -59,7 +59,14 @@ export default function XTerm({ ref, background, foreground, cursor, fontSize = 
         if (!t) return;
         // A latched Ctrl must not turn a one-character paste into a control code.
         ctrl.current = false;
-        t.paste(text as string);
+        const str = text as string;
+        if (!t.modes.bracketedPasteMode && t.buffer.active.type === 'normal' && /[\r\n]/.test(str)) {
+          // Shell without bracketed paste (bash < 5.1, sh): a newline would submit the line. ^V before it
+          // (readline quoted-insert / tty lnext) inserts it literally, so nothing runs until Enter.
+          onInput(bytesToB64(encoder.encode(str.replace(/\r\n|\r|\n/g, '\x16\n'))));
+        } else {
+          t.paste(str);
+        }
         t.focus();
       },
       focus() {

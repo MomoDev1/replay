@@ -13,6 +13,8 @@ const KEYS: [string, string][] = [
   ['Ctrl', ''],
   ['Esc', '\x1b'],
   ['Tab', '\t'],
+  // Runs a pasted snippet without having to open the keyboard (iOS cannot raise it programmatically).
+  ['↵', '\r'],
   ['^C', '\x03'],
   ['←', '\x1b[D'],
   ['↑', '\x1b[A'],

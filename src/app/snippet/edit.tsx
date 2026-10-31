@@ -5,6 +5,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { asciiPunct, parseVars } from '@/components/snippet-row';
 import { Button, Mono, s, Segmented, SheetHeader } from '@/components/ui';
+import { useSheetKeyboardInset } from '@/hooks/use-sheet-keyboard';
 import { useSession } from '@/store/session';
 import { useSnippets } from '@/store/snippets';
 import { C, mono } from '@/theme';
@@ -21,6 +22,7 @@ export default function EditSnippet() {
   const [fav, setFav] = useState(existing?.fav ?? false);
   const [scope, setScope] = useState<'server' | 'global'>(existing ? (existing.serverId ? 'server' : 'global') : server && initialScope !== 'global' ? 'server' : 'global');
   const [busy, setBusy] = useState(false);
+  const kb = useSheetKeyboardInset();
   const vars = parseVars(cmd);
   // Editing a server snippet while connected elsewhere keeps its original server.
   const serverId = scope === 'global' ? null : (existing?.serverId ?? server?.id ?? null);
@@ -37,10 +39,12 @@ export default function EditSnippet() {
     }
   }
 
+  const submitButton = <Button title={existing ? 'Enregistrer' : 'Créer le snippet'} onPress={submit} style={{ opacity: valid ? 1 : 0.5 }} />;
+
   return (
     <View style={s.sheet}>
       <SheetHeader title={existing ? 'Modifier le snippet' : 'Nouveau snippet'} />
-      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ gap: 14, paddingBottom: 20 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ gap: 14, paddingBottom: 20 + kb }}>
         <View>
           <Text style={[s.section, { marginBottom: 8 }]}>TITRE</Text>
           <TextInput value={title} onChangeText={setTitle} placeholder="Redémarrer un service" placeholderTextColor={C.dim} style={input} />
@@ -94,8 +98,10 @@ export default function EditSnippet() {
           <Star size={18} color={fav ? C.orange : C.dim} fill={fav ? C.orange : 'transparent'} />
           <Text style={{ color: C.text }}>Afficher dans les commandes rapides</Text>
         </Pressable>
+        {/* Android: with the keyboard open the button scrolls with the form, otherwise it sits behind the keyboard. */}
+        {!!kb && submitButton}
       </ScrollView>
-      <Button title={existing ? 'Enregistrer' : 'Créer le snippet'} onPress={submit} style={{ opacity: valid ? 1 : 0.5 }} />
+      {!kb && submitButton}
     </View>
   );
 }
