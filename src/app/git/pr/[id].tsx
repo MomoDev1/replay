@@ -82,7 +82,10 @@ export default function PrDetail() {
 
   /** Roots in time order, each followed by its replies (any depth, flattened with depth info). */
   const threads = useMemo(() => {
-    const cs = mine?.comments ?? [];
+    // Bitbucket keeps deleted comments: show them only when they still anchor replies.
+    const all = mine?.comments ?? [];
+    const parents = new Set(all.map((c) => c.parentId));
+    const cs = all.filter((c) => !c.deleted || parents.has(c.id));
     const ids = new Set(cs.map((c) => c.id));
     const kids = new Map<number, PrComment[]>();
     for (const c of cs) if (c.parentId && ids.has(c.parentId)) kids.set(c.parentId, [...(kids.get(c.parentId) ?? []), c]);
@@ -269,7 +272,7 @@ export default function PrDetail() {
               <View style={{ marginTop: 18 }}>
                 <Segmented
                   options={[
-                    { value: 'discussion', label: `Discussion${mine!.comments.length ? ` · ${mine!.comments.length}` : ''}` },
+                    { value: 'discussion', label: `Discussion${threads.length ? ` · ${threads.flat().length}` : ''}` },
                     { value: 'files', label: `Fichiers${mine!.files ? ` · ${mine!.files.length}` : ''}` },
                     { value: 'commits', label: `Commits${mine!.commits ? ` · ${mine!.commits.length}` : ''}` },
                   ]}
