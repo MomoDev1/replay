@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 
 import { Button, Mono, s, Segmented, SheetHeader } from '@/components/ui';
 import { detectLogFiles, detectServices, type LogSource } from '@/lib/monitor';
+import { asciiPunct } from '@/lib/text';
 import { logSourceFor, setLogSource } from '@/store/monitor';
 import { useSession } from '@/store/session';
 import { C, mono } from '@/theme';
@@ -39,7 +40,7 @@ export default function LogSourceSheet() {
     if (kind === 'journal' && !services) detectServices().then(setServices, () => setServices([]));
   }, [kind, files, services, server?.path]);
 
-  const value = kind === 'file' ? path.trim() : kind === 'cmd' ? cmd.trim() : unit.trim();
+  const value = asciiPunct(kind === 'file' ? path.trim() : kind === 'cmd' ? cmd.trim() : unit.trim());
   const valid = kind === 'journal' || !!value;
 
   function save(src: LogSource) {

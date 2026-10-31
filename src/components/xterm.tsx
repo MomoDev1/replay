@@ -59,6 +59,14 @@ const encoder = new TextEncoder();
 
 /** Characters that end a word for tap-to-select (paths, URLs and flags stay in one piece). */
 const SEPARATORS = ' \t()[]{}<>\'"`,;|';
+const SMART: Record<string, string> = {
+  '\u2018': "'",
+  '\u2019': "'",
+  '\u201C': '"',
+  '\u201D': '"',
+  '\u2014': '-',
+  '\u2026': '.',
+};
 const LONG_PRESS_MS = 450;
 const TAP_SLOP = 10;
 /** How close (px) a touch must start to a handle to drag that end of the selection. */
@@ -178,6 +186,10 @@ export default function XTerm({ ref, background, foreground, cursor, accent, mat
     search.current = finder;
 
     t.onData((data) => {
+      // iOS smart punctuation also applies to the WebView's input: a typed ' or " arrives curly and the
+      // shell rejects it. Only single typed characters are mapped; pastes go through untouched.
+      // `—` / `…` replace the `-` / `.` typed just before, which has already been sent.
+      if (data.length === 1 && SMART[data]) data = SMART[data];
       if (ctrl.current && data.length === 1 && /[a-z@[\\\]^_]/i.test(data)) {
         ctrl.current = false;
         onCtrlConsumed();

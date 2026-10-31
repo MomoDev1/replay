@@ -29,16 +29,8 @@ export const resolveCmd = (cmd: string, vals: Record<string, string>) => cmd.rep
 /** Command with variables reduced to their name, for one-line previews. */
 export const plainCmd = (cmd: string) => cmd.replace(VAR, (m, dollar: string, v: string) => (dollar ? m : v));
 
-/**
- * iOS "smart punctuation" rewrites ' " -- ... into ’ ” — … even with autoCorrect off,
- * and a shell rejects them. Applied when a snippet is saved and when it is pasted.
- */
-export const asciiPunct = (text: string) =>
-  text
-    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
-    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
-    .replace(/\u2014/g, '--')
-    .replace(/\u2026/g, '...');
+/** Applied when a snippet is saved and when it is pasted. */
+export { asciiPunct } from '@/lib/text';
 
 function ago(ts: number) {
   const days = Math.floor((Date.now() - ts) / 86_400_000);

@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 
 import { Button, Mono, s, SheetHeader } from '@/components/ui';
 import { shPath } from '@/lib/git';
+import { asciiPunct } from '@/lib/text';
 import { exec, useSession } from '@/store/session';
 import { setRepo, useGit } from '@/store/git';
 import { C, mono } from '@/theme';
@@ -20,7 +21,7 @@ export default function RepoSheet() {
   async function search() {
     setSearching(true);
     try {
-      const r = await exec(`find ${shPath(base)} -maxdepth 4 -type d -name .git -prune -print 2>/dev/null | head -50`, 30_000);
+      const r = await exec(`find ${shPath(asciiPunct(base))} -maxdepth 4 -type d -name .git -prune -print 2>/dev/null | head -50`, 30_000);
       setFound(r.stdout.split('\n').filter(Boolean).map((p) => p.replace(/\/\.git$/, '')));
     } catch {
       setFound([]);
@@ -30,7 +31,7 @@ export default function RepoSheet() {
 
   function choose(p: string) {
     if (!server || !p.trim()) return;
-    setRepo(server, p.trim());
+    setRepo(server, asciiPunct(p.trim()));
     router.back();
   }
 

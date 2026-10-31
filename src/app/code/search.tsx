@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'r
 
 import { Mono, s, Segmented, SheetHeader } from '@/components/ui';
 import { allFiles, grep, join, type GrepHit } from '@/lib/files';
+import { asciiPunct } from '@/lib/text';
 import { currentDir } from '@/store/code';
 import { C, mono } from '@/theme';
 
@@ -59,7 +60,7 @@ export default function SearchSheet() {
     if (!q.trim()) return;
     setBusy(true);
     try {
-      setHits(await grep(root, q.trim()));
+      setHits(await grep(root, asciiPunct(q.trim())));
     } catch {
       setHits([]);
     }
