@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -62,6 +62,17 @@ export default function Settings() {
             <Text style={[s.muted, { fontSize: 11 }]}>Enregistrer un fichier, annuler des modifications ou git reset sur un serveur prod</Text>
           </View>
         </Card>
+
+        <SectionLabel>Comptes Git</SectionLabel>
+        <Pressable onPress={() => router.push('/git/accounts')}>
+          <Card style={[s.row, { padding: 14, gap: 10 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: C.text }}>GitHub et Bitbucket</Text>
+              <Text style={[s.muted, { fontSize: 11 }]}>Jetons d’API pour gérer les pull requests</Text>
+            </View>
+            <ChevronRight size={14} color={C.dim} />
+          </Card>
+        </Pressable>
 
         <SectionLabel>Clés SSH</SectionLabel>
         <Card style={{ padding: 0 }}>
