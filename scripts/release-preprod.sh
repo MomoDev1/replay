@@ -65,6 +65,11 @@ fi
 git fetch --tags --quiet origin
 git pull --ff-only --quiet origin "$BRANCH"
 
+# Le pull peut amener de nouvelles dépendances (package-lock.json) : node_modules doit suivre,
+# sinon lint/typecheck/bundle échouent sur des modules introuvables.
+step "Installation des dépendances (npm ci)"
+npm ci --no-audit --no-fund
+
 # --- Dernière version : max(dernier tag vX.Y.Z, app.json) --------------------
 step "Recherche de la dernière version"
 TAG_VER=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1 | sed 's/^v//; s/-.*//')
@@ -89,7 +94,7 @@ fi
 
 # --- Qualité -----------------------------------------------------------------
 step "Lint + typecheck"
-npx expo lint
+npx expo lint --no-cache # le cache garde des erreurs « module introuvable » périmées
 npx tsc --noEmit
 
 # --- Bump, commit, tag, push -------------------------------------------------
