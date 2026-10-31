@@ -45,3 +45,8 @@ example
 # Gradle caches from opening native modules in Android Studio
 .gradle/
 modules/*/android/build/
+
+# relay-ssh iOS core tests (SwiftPM)
+modules/relay-ssh/ios-tests/.build/
+modules/relay-ssh/ios-tests/.sshtest/
+modules/relay-ssh/ios-tests/Package.resolved

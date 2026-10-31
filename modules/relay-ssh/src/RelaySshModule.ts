@@ -16,5 +16,5 @@ declare class RelaySshModule extends NativeModule<RelaySshModuleEvents> {
   inspectKey(privateKey: string, passphrase: string | null): Promise<KeyInfo>;
 }
 
-// Only implemented on Android for now; null elsewhere so the app still boots.
+// Implemented on Android (sshj) and iOS (SwiftNIO SSH); null on web and in Expo Go so the app still boots.
 export default requireOptionalNativeModule<RelaySshModule>('RelaySsh');
