@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Activity, GitBranch, Server, SquareTerminal } from 'lucide-react-native';
+import { Activity, CodeXml, GitBranch, Server, SquareTerminal } from 'lucide-react-native';
 
 import { C } from '@/theme';
 
@@ -16,6 +16,7 @@ export default function TabsLayout() {
       }}>
       <Tabs.Screen name="index" options={{ title: 'Serveurs', tabBarIcon: ({ color }) => <Server size={20} color={color} /> }} />
       <Tabs.Screen name="terminal" options={{ title: 'Terminal', tabBarIcon: ({ color }) => <SquareTerminal size={20} color={color} /> }} />
+      <Tabs.Screen name="code" options={{ title: 'Code', tabBarIcon: ({ color }) => <CodeXml size={20} color={color} /> }} />
       <Tabs.Screen name="git" options={{ title: 'Git', tabBarIcon: ({ color }) => <GitBranch size={20} color={color} /> }} />
       <Tabs.Screen name="monitoring" options={{ title: 'Monitoring', tabBarIcon: ({ color }) => <Activity size={20} color={color} /> }} />
     </Tabs>
