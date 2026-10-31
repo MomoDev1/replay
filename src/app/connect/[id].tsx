@@ -80,7 +80,9 @@ export default function Connect() {
     pending.current = null;
     openSession(p.sessionId, server, p.latencyMs);
     await setStatus(server.id, 'online');
-    router.replace('/terminal');
+    // Back to the existing tab navigator: `replace` would stack a second copy of the tabs (and of the
+    // terminal WebView) on every connection, reachable with the iOS back swipe.
+    router.dismissTo('/terminal');
   }
 
   async function run() {

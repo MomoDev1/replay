@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card, Mono, s, SectionLabel, Segmented } from '@/components/ui';
@@ -13,7 +13,6 @@ import { getIdleTimeout, setIdleTimeout, type IdleTimeout } from '@/store/sessio
 import { C } from '@/theme';
 
 export default function Settings() {
-  const [faceId, setFaceId] = useState(true);
   const [timeout, setTimeoutVal] = useState<IdleTimeout>(getIdleTimeout);
   const { keys, servers, generateKey } = useServers();
   const usage = (k: SshKey) => servers.filter((sv) => sv.auth === 'key' && sv.keyId === k.id).length;
@@ -38,14 +37,6 @@ export default function Settings() {
 
         <SectionLabel>Sécurité</SectionLabel>
         <Card style={{ padding: 0 }}>
-          <View style={[s.row, { padding: 14 }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: C.text }}>Verrouillage Face ID</Text>
-              <Text style={[s.muted, { fontSize: 11 }]}>À l’ouverture et au retour dans l’app</Text>
-            </View>
-            <Switch value={faceId} onValueChange={setFaceId} trackColor={{ true: C.green, false: C.surface2 }} />
-          </View>
-          <View style={s.sep} />
           <View style={{ padding: 14, gap: 10 }}>
             <Text style={{ color: C.text }}>Déconnexion SSH automatique</Text>
             <Segmented
@@ -63,9 +54,12 @@ export default function Settings() {
             />
           </View>
           <View style={s.sep} />
-          <View style={[s.row, { padding: 14, justifyContent: 'space-between' }]}>
-            <Text style={{ color: C.text }}>Confirmation production</Text>
-            <Text style={s.muted}>Nom + Face ID ›</Text>
+          <View style={{ padding: 14, gap: 2 }}>
+            <View style={[s.row, { justifyContent: 'space-between' }]}>
+              <Text style={{ color: C.text }}>Confirmation production</Text>
+              <Text style={s.muted}>Face ID</Text>
+            </View>
+            <Text style={[s.muted, { fontSize: 11 }]}>Enregistrer un fichier, annuler des modifications ou git reset sur un serveur prod</Text>
           </View>
         </Card>
 

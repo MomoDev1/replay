@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, Dot, Mono, Radio, s, SectionLabel, Segmented } from '@/components/ui';
 import { getKnownHost, setKnownHost } from '@/lib/db';
 import { asSshError, credentialsFor, ssh } from '@/lib/ssh';
+import { asciiPunct } from '@/lib/text';
 import type { AuthMethod } from '@/lib/types';
 import { useServer, useServers } from '@/store/servers';
 import { C, envColor, mono, type Env } from '@/theme';
@@ -47,14 +48,16 @@ export default function ServerForm() {
     !user.trim() && 'Utilisateur requis',
     !(Number.isInteger(portNum) && portNum >= 1 && portNum <= 65535) && 'Port invalide (1–65535)',
     auth === 'key' && !keyId && 'Choisis ou génère une clé SSH',
-    auth === 'password' && !existing && !password && 'Mot de passe requis',
+    // An existing password server may keep its saved password; one switching from a key has none yet.
+    auth === 'password' && existing?.auth !== 'password' && !password && 'Mot de passe requis',
   ].filter(Boolean) as string[];
 
   function input() {
-    return { name: name.trim() || host.trim(), host: host.trim(), port: portNum, user: user.trim(), env, auth, keyId, path: path.trim() };
+    return { name: name.trim() || host.trim(), host: host.trim(), port: portNum, user: user.trim(), env, auth, keyId, path: asciiPunct(path.trim()) };
   }
 
   async function runTest() {
+    if (test?.state === 'running') return;
     if (problems.length) return Alert.alert('Formulaire incomplet', problems.join('\n'));
     setTest({ state: 'running' });
     let sid: string | null = null;
@@ -108,8 +111,11 @@ export default function ServerForm() {
           <Text style={{ color: problems.length ? C.dim : C.accent, fontWeight: '700', fontSize: 16 }}>Enregistrer</Text>
         </Pressable>
       </View>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      {/* iOS presents this modal as a page sheet, offset from the top of the window, which KeyboardAvoidingView
+          does not account for: the scroll view insets itself from the keyboard instead (window coordinates).
+          Android shows it full screen and, edge-to-edge, no longer resizes the window for the keyboard. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'android' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <SectionLabel>Connexion</SectionLabel>
           <Card style={{ padding: 0 }}>
             <Field label="Nom" value={name} onChange={setName} monoFont placeholder="api-prod-01" />
@@ -157,7 +163,7 @@ export default function ServerForm() {
             </Card>
           ) : (
             <Card style={{ padding: 0, marginTop: 10 }}>
-              <TextInput value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" placeholder={existing ? 'Inchangé' : 'Mot de passe'} placeholderTextColor={C.dim} style={{ color: C.text, padding: 14 }} />
+              <TextInput value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" placeholder={existing?.auth === 'password' ? 'Inchangé' : 'Mot de passe'} placeholderTextColor={C.dim} style={{ color: C.text, padding: 14 }} />
             </Card>
           )}
 
@@ -177,7 +183,7 @@ export default function ServerForm() {
             <View style={{ backgroundColor: C.redBg, borderRadius: 10, padding: 12, marginTop: 10 }}>
               <Text style={{ color: C.text, fontSize: 12 }}>
                 <Text style={{ color: C.red, fontWeight: '700' }}>Production protégée. </Text>
-                Chaque déploiement demandera le nom du serveur ou Face ID.
+                Enregistrer un fichier, annuler des modifications ou faire un git reset demandera Face ID.
               </Text>
             </View>
           )}

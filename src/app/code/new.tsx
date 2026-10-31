@@ -4,6 +4,7 @@ import { Alert, Text, TextInput, View } from 'react-native';
 
 import { Button, Mono, s, Segmented, SheetHeader } from '@/components/ui';
 import { create, join } from '@/lib/files';
+import { asciiPunct } from '@/lib/text';
 import { currentDir, open } from '@/store/code';
 import { C, mono } from '@/theme';
 
@@ -14,7 +15,7 @@ export default function NewEntry() {
   const [busy, setBusy] = useState(false);
 
   async function submit() {
-    const n = name.trim();
+    const n = asciiPunct(name.trim());
     if (!n || busy) return;
     // Sub-paths are allowed (`src/utils.ts`) but must stay inside the current folder.
     const path = join(dir, n);

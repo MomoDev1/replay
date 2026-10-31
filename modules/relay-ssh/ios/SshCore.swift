@@ -307,6 +307,12 @@ final class SshCore: @unchecked Sendable {
     if error is ChannelError || error is ConnectionClosed {
       return SshFailure("SSH", "Connexion fermée par le serveur")
     }
+    #if canImport(Network)
+    // The connection dropped under us: iOS reclaimed it while the app was in the background, or the network changed.
+    if let nw = error as? NWError {
+      return SshFailure("SSH", "Connexion perdue (réseau coupé ou app restée en arrière-plan) : \(nw.localizedDescription)")
+    }
+    #endif
     if let e = error as? NIOSSHError {
       switch e.type {
       case .keyExchangeNegotiationFailure:

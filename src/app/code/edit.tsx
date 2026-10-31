@@ -163,7 +163,9 @@ export default function EditFile() {
   const status = !session?.open ? 'Session fermée' : file?.readOnly ? `${file.readOnly} · lecture seule` : decodeError ? 'Encodage non UTF-8 · lecture seule' : null;
 
   return (
-    <SafeAreaView style={s.screen} edges={['top']}>
+    // Not inside the tabs: the bottom edge keeps the key bar off the iPhone home indicator. The keyboard
+    // avoider below still lines up with the keyboard, its frame being measured from this view's top.
+    <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
       <View style={[s.row, { paddingHorizontal: 12, paddingVertical: 8, gap: 10 }]}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <ChevronLeft size={22} color={C.text} />
