@@ -2,6 +2,7 @@ import Storage from 'expo-sqlite/kv-store';
 import { useSyncExternalStore } from 'react';
 import { Alert } from 'react-native';
 
+import { detectRemote, type RepoRef } from '@/lib/forge';
 import * as G from '@/lib/git';
 import type { Server } from '@/lib/types';
 
@@ -12,6 +13,8 @@ export type GitState = {
   commits: G.Commit[];
   stashes: G.Stash[];
   tags: G.Tag[];
+  /** GitHub / Bitbucket repo behind the remote, if any. */
+  remote: RepoRef | null;
   fetchedAt: number | null;
   loading: boolean;
   error: string | null;
@@ -33,7 +36,7 @@ export const repoFor = (server: Server) => Storage.getItemSync(repoKey(server.id
 
 function reset(serverId: string, repo: string) {
   seq++;
-  state = { serverId, repo, status: null, commits: [], stashes: [], tags: [], fetchedAt: null, loading: false, error: null };
+  state = { serverId, repo, status: null, commits: [], stashes: [], tags: [], remote: null, fetchedAt: null, loading: false, error: null };
   listeners.forEach((l) => l());
   return refresh();
 }
@@ -56,10 +59,10 @@ export async function refresh() {
   set({ loading: true });
   try {
     const status = await G.status(repo);
-    const [commits, stashes, tags, fetchedAt] = await Promise.all([G.log(repo), G.stashes(repo), G.tags(repo), G.fetchedAt(repo)]);
-    if (id === seq) set({ status, commits, stashes, tags, fetchedAt, error: null, loading: false });
+    const [commits, stashes, tags, fetchedAt, remote] = await Promise.all([G.log(repo), G.stashes(repo), G.tags(repo), G.fetchedAt(repo), detectRemote(repo, status.upstream).catch(() => null)]);
+    if (id === seq) set({ status, commits, stashes, tags, fetchedAt, remote, error: null, loading: false });
   } catch (e) {
-    if (id === seq) set({ status: null, commits: [], stashes: [], tags: [], error: (e as Error).message, loading: false });
+    if (id === seq) set({ status: null, commits: [], stashes: [], tags: [], remote: null, error: (e as Error).message, loading: false });
   }
 }
 

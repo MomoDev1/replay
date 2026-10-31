@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
-import { Archive, ArrowDown, ArrowUp, Check, ChevronRight, FolderGit2, GitBranch, GitCommitHorizontal, RefreshCw, RotateCcw, Tag } from 'lucide-react-native';
+import { Archive, ArrowDown, ArrowUp, Check, ChevronRight, FolderGit2, GitBranch, GitCommitHorizontal, GitPullRequest, RefreshCw, RotateCcw, Tag } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Mono, s, SectionLabel } from '@/components/ui';
 import { confirmBiometric } from '@/lib/auth';
+import { forgeLabel } from '@/lib/forge';
 import { ago, discardAll, git, isStaged, isUnstaged, stage, unstage, type GitFile } from '@/lib/git';
 import { act, refresh, selectServer, useGit } from '@/store/git';
 import { useSession } from '@/store/session';
@@ -186,8 +187,19 @@ export default function GitScreen() {
             </Card>
             {staged.length === 0 && unstaged.length > 0 && <Text style={{ color: C.dim, fontSize: 11, marginTop: 6, paddingHorizontal: 4 }}>Coche des fichiers pour les indexer, puis commit.</Text>}
 
+            {g.remote && (
+              <Pressable onPress={() => router.push('/git/prs')}>
+                <Card style={[s.row, { gap: 10, marginTop: 16, padding: 12 }]}>
+                  <GitPullRequest size={16} color={C.accent} />
+                  <Text style={{ color: C.text, flex: 1 }}>Pull requests</Text>
+                  <Mono style={{ color: C.muted, fontSize: 12 }}>{forgeLabel[g.remote.forge]}</Mono>
+                  <ChevronRight size={14} color={C.dim} />
+                </Card>
+              </Pressable>
+            )}
+
             <Pressable onPress={() => router.push('/git/stash')}>
-              <Card style={[s.row, { gap: 10, marginTop: 16, padding: 12 }]}>
+              <Card style={[s.row, { gap: 10, marginTop: g.remote ? 8 : 16, padding: 12 }]}>
                 <Archive size={16} color={C.muted} />
                 <Text style={{ color: C.text, flex: 1 }}>Remises (stash)</Text>
                 <Mono style={{ color: C.muted, fontSize: 12 }}>{g.stashes.length}</Mono>

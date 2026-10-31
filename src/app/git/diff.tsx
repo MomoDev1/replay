@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DiffView } from '@/components/DiffView';
 import { Button, Mono, s } from '@/components/ui';
 import { confirmBiometric } from '@/lib/auth';
 import { diff, discardFile, isStaged, isUnstaged, type DiffLine } from '@/lib/git';
@@ -90,28 +91,7 @@ export default function Diff() {
         ) : !loaded.lines.length ? (
           <Text style={[s.muted, { padding: 16 }]}>Aucune différence de contenu (changement de mode ou fichier vide).</Text>
         ) : (
-          <ScrollView horizontal>
-            <View>
-              {loaded.lines.map((l, i) => {
-                if (l.k === '@')
-                  return (
-                    <Mono key={i} style={{ fontSize: 11, color: C.accent, backgroundColor: C.accentBg, padding: 8 }}>
-                      {l.t}
-                    </Mono>
-                  );
-                const bg = l.k === '+' ? C.greenBg : l.k === '-' ? C.redBg : 'transparent';
-                const col = l.k === '+' ? C.green : l.k === '-' ? C.red : C.text;
-                return (
-                  <View key={i} style={[s.row, { backgroundColor: bg, paddingVertical: 2, paddingRight: 16 }]}>
-                    <Mono style={{ width: 36, textAlign: 'right', color: C.dim, fontSize: 11 }}>{l.o ?? ''}</Mono>
-                    <Mono style={{ width: 36, textAlign: 'right', color: C.dim, fontSize: 11 }}>{l.n ?? ''}</Mono>
-                    <Mono style={{ width: 18, textAlign: 'center', color: col, fontSize: 11 }}>{l.k ?? ''}</Mono>
-                    <Mono style={{ color: col, fontSize: 11 }}>{l.t}</Mono>
-                  </View>
-                );
-              })}
-            </View>
-          </ScrollView>
+          <DiffView lines={loaded.lines} />
         )}
       </ScrollView>
       <View style={[s.row, { gap: 8, padding: 16 }]}>
