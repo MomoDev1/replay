@@ -106,7 +106,8 @@ export function TerminalView() {
             background={C.bg}
             foreground={C.text}
             cursor={C.green}
-            dom={{ style: { flex: 1, backgroundColor: C.bg }, scrollEnabled: false }}
+            // iOS: no prev/next/done bar above the keyboard, the key bar below replaces it
+            dom={{ style: { flex: 1, backgroundColor: C.bg }, scrollEnabled: false, hideKeyboardAccessoryView: true }}
             onReady={async () => {
               unsub.current?.();
               unsub.current = subscribeData((b64) => term.current?.write(b64));

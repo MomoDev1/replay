@@ -8,7 +8,11 @@
     "scheme": "relay",
     "userInterfaceStyle": "dark",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "dev.relay.app",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Hop se connecte en SSH aux serveurs de ton réseau local."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -36,6 +40,12 @@
       ],
       "expo-sqlite",
       "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Hop utilise Face ID pour confirmer les déploiements et les commandes sur les serveurs de production."
+        }
+      ],
       "./modules/relay-ssh/app.plugin.js"
     ],
     "experiments": {

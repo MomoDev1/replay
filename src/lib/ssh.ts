@@ -13,7 +13,7 @@ export class SshError extends Error {
 }
 
 export function ssh() {
-  if (!RelaySsh) throw new SshError('UNSUPPORTED', 'Le client SSH natif n’est pas disponible dans ce build (dev build Android requis).');
+  if (!RelaySsh) throw new SshError('UNSUPPORTED', 'Le client SSH natif n’est pas disponible dans ce build (dev build iOS ou Android requis).');
   return RelaySsh;
 }
 
