@@ -1,0 +1,90 @@
+# Release candidate : push d'un tag rc.N → lint + typecheck → build Android (EAS, profil preview)
+# → GitHub pre-release avec l'APK attaché.
+#
+#   git tag rc.1 && git push origin rc.1
+#
+# Prérequis : secret de dépôt EXPO_TOKEN (https://expo.dev/settings/access-tokens).
+name: Release candidate
+
+on:
+  push:
+    tags:
+      - 'rc.[0-9]+'
+
+permissions:
+  contents: write # créer la release et y attacher l'APK
+
+concurrency:
+  group: release-rc
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build Android + pre-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # tags + historique pour les notes de release
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npx expo lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build EAS Android (preview)
+        id: build
+        run: |
+          VERSION=$(node -p "require('./app.json').expo.version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          eas build --platform android --profile preview --non-interactive --wait --json \
+            --message "$TAG ($VERSION)" > build.json
+
+          BUILD_ID=$(node -p "require('./build.json')[0].id")
+          APK_URL=$(node -p "const b = require('./build.json')[0]; b.artifacts?.buildUrl ?? b.artifacts?.applicationArchiveUrl ?? ''")
+          OWNER=$(node -p "require('./app.json').expo.owner")
+          SLUG=$(node -p "require('./app.json').expo.slug")
+          echo "url=https://expo.dev/accounts/$OWNER/projects/$SLUG/builds/$BUILD_ID" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$APK_URL" ]; then
+            echo "::error::Build terminé sans APK (build $BUILD_ID)"
+            exit 1
+          fi
+          APK="hop-$VERSION-$TAG.apk"
+          curl -fsSL -o "$APK" "$APK_URL"
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+
+      - name: GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.build.outputs.version }}
+          APK: ${{ steps.build.outputs.apk }}
+          BUILD_URL: ${{ steps.build.outputs.url }}
+        run: |
+          gh release create "$TAG" "$APK" \
+            --verify-tag \
+            --prerelease \
+            --title "Hop $VERSION ($TAG)" \
+            --notes "Build EAS : $BUILD_URL" \
+            --generate-notes
+          echo "### ✅ $(gh release view "$TAG" --json url -q .url)" >> "$GITHUB_STEP_SUMMARY"
