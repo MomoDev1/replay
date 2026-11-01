@@ -1,6 +1,7 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { DB_NAME, migrate } from '@/lib/db';
@@ -35,7 +36,15 @@ export default function RootLayout() {
           <Stack.Screen name="git/commit" options={{ ...sheet, sheetAllowedDetents: [0.8] }} />
           <Stack.Screen name="git/stash" options={{ ...sheet, sheetAllowedDetents: [0.7] }} />
           <Stack.Screen name="git/tags" options={{ ...sheet, sheetAllowedDetents: [0.8] }} />
-          <Stack.Screen name="git/repo" options={{ ...sheet, sheetAllowedDetents: [0.8], gestureEnabled: false, sheetExpandsWhenScrolledToEdge: false }} />
+          <Stack.Screen
+            name="git/repo"
+            options={
+              // Android bottom sheets are always drag-to-dismiss, which closes this list while scrolling: use a full-screen modal there.
+              Platform.OS === 'android'
+                ? { presentation: 'modal', contentStyle: { backgroundColor: C.surface } }
+                : { ...sheet, sheetAllowedDetents: [0.8], gestureEnabled: false, sheetExpandsWhenScrolledToEdge: false }
+            }
+          />
           <Stack.Screen name="git/accounts" options={{ ...sheet, sheetAllowedDetents: [0.9] }} />
           <Stack.Screen name="git/pr/merge" options={{ ...sheet, sheetAllowedDetents: [0.85] }} />
           <Stack.Screen name="monitoring/logs" options={{ ...sheet, sheetAllowedDetents: [0.85] }} />
