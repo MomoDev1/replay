@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { Button, Card, Mono, Radio, s, SheetHeader } from '@/components/ui';
+import { Button, Card, Mono, Radio, s, Sheet, SheetHeader } from '@/components/ui';
 import { confirmBiometric } from '@/lib/auth';
 import { ago, git } from '@/lib/git';
 import { sq } from '@/lib/ssh';
@@ -61,7 +61,7 @@ export default function RevertSheet() {
   const dropped = after ? `${after} commit${after > 1 ? 's' : ''} après celui-ci ser${after > 1 ? 'ont' : 'a'} supprimé${after > 1 ? 's' : ''}, ainsi que les modifications non commitées.` : 'Les modifications non commitées seront supprimées.';
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader title="Revenir à un commit" subtitle={<Text style={s.muted}>{[g?.repo, g?.status?.branch, server?.name].filter(Boolean).join(' · ')}</Text>} />
       <Card style={{ backgroundColor: C.surface2 }}>
         <Mono style={{ color: C.orange, fontSize: 12 }}>{short}</Mono>
@@ -82,6 +82,6 @@ export default function RevertSheet() {
       <Pressable onPress={() => router.back()} style={{ alignItems: 'center', padding: 12 }}>
         <Text style={s.muted}>Annuler</Text>
       </Pressable>
-    </View>
+    </Sheet>
   );
 }

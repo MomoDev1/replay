@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { File, Search } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
-import { Mono, s, Segmented, SheetHeader } from '@/components/ui';
+import { Mono, s, Segmented, Sheet, SheetHeader } from '@/components/ui';
 import { allFiles, grep, join, type GrepHit } from '@/lib/files';
 import { asciiPunct } from '@/lib/text';
 import { currentDir } from '@/store/code';
@@ -70,7 +70,7 @@ export default function SearchSheet() {
   const input = { flex: 1, color: C.text, paddingVertical: 9, fontFamily: mono, fontSize: 13 } as const;
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader
         title="Rechercher"
         subtitle={
@@ -107,51 +107,45 @@ export default function SearchSheet() {
         {(busy || (mode === 'files' && !files)) && <ActivityIndicator size="small" color={C.muted} />}
       </View>
 
-      {mode === 'files' ? (
-        <FlatList
-          style={{ flex: 1, marginTop: 8 }}
-          keyboardShouldPersistTaps="handled"
-          data={matches}
-          keyExtractor={(f) => f}
-          ListEmptyComponent={files ? <Text style={[s.muted, { marginTop: 8 }]}>Aucun fichier.</Text> : undefined}
-          renderItem={({ item }) => {
-            const slash = item.lastIndexOf('/');
-            return (
-              <Pressable onPress={() => openFile(join(root, item))} style={[s.row, { gap: 10, paddingVertical: 9, borderBottomWidth: 1, borderColor: C.border }]}>
-                <File size={14} color={C.muted} />
-                <View style={{ flex: 1 }}>
-                  <Mono style={{ fontSize: 13 }} numberOfLines={1}>
-                    {item.slice(slash + 1)}
-                  </Mono>
-                  {slash > 0 && (
-                    <Mono style={{ fontSize: 10, color: C.muted }} numberOfLines={1}>
-                      {item.slice(0, slash)}
+      <View style={{ marginTop: 8 }}>
+        {mode === 'files' ? (
+          <>
+            {files && !matches.length && <Text style={[s.muted, { marginTop: 8 }]}>Aucun fichier.</Text>}
+            {matches.map((item) => {
+              const slash = item.lastIndexOf('/');
+              return (
+                <Pressable key={item} onPress={() => openFile(join(root, item))} style={[s.row, { gap: 10, paddingVertical: 9, borderBottomWidth: 1, borderColor: C.border }]}>
+                  <File size={14} color={C.muted} />
+                  <View style={{ flex: 1 }}>
+                    <Mono style={{ fontSize: 13 }} numberOfLines={1}>
+                      {item.slice(slash + 1)}
                     </Mono>
-                  )}
-                </View>
+                    {slash > 0 && (
+                      <Mono style={{ fontSize: 10, color: C.muted }} numberOfLines={1}>
+                        {item.slice(0, slash)}
+                      </Mono>
+                    )}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </>
+        ) : (
+          <>
+            {!hits?.length && <Text style={[s.muted, { marginTop: 8 }]}>{hits ? 'Aucun résultat.' : 'Valide pour lancer la recherche (300 résultats max).'}</Text>}
+            {hits?.map((item, i) => (
+              <Pressable key={`${item.path}:${item.line}:${i}`} onPress={() => openFile(join(root, item.path), item.line)} style={{ paddingVertical: 8, borderBottomWidth: 1, borderColor: C.border }}>
+                <Mono style={{ fontSize: 11, color: C.accent }} numberOfLines={1}>
+                  {item.path}:{item.line}
+                </Mono>
+                <Mono style={{ fontSize: 12, marginTop: 2 }} numberOfLines={2}>
+                  {item.text}
+                </Mono>
               </Pressable>
-            );
-          }}
-        />
-      ) : (
-        <FlatList
-          style={{ flex: 1, marginTop: 8 }}
-          keyboardShouldPersistTaps="handled"
-          data={hits ?? []}
-          keyExtractor={(h, i) => `${h.path}:${h.line}:${i}`}
-          ListEmptyComponent={hits ? <Text style={[s.muted, { marginTop: 8 }]}>Aucun résultat.</Text> : <Text style={[s.muted, { marginTop: 8 }]}>Valide pour lancer la recherche (300 résultats max).</Text>}
-          renderItem={({ item }) => (
-            <Pressable onPress={() => openFile(join(root, item.path), item.line)} style={{ paddingVertical: 8, borderBottomWidth: 1, borderColor: C.border }}>
-              <Mono style={{ fontSize: 11, color: C.accent }} numberOfLines={1}>
-                {item.path}:{item.line}
-              </Mono>
-              <Mono style={{ fontSize: 12, marginTop: 2 }} numberOfLines={2}>
-                {item.text}
-              </Mono>
-            </Pressable>
-          )}
-        />
-      )}
-    </View>
+            ))}
+          </>
+        )}
+      </View>
+    </Sheet>
   );
 }

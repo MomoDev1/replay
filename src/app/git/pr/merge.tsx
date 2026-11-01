@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 
-import { Button, Card, Mono, Radio, s, SheetHeader } from '@/components/ui';
+import { Button, Card, Mono, Radio, s, Sheet, SheetHeader } from '@/components/ui';
 import { prAct, usePr } from '@/store/pr';
 import { C } from '@/theme';
 
@@ -17,10 +17,10 @@ export default function MergeSheet() {
 
   if (!pr) {
     return (
-      <View style={s.sheet}>
+      <Sheet>
         <SheetHeader title="Merge" />
         <ActivityIndicator color={C.muted} />
-      </View>
+      </Sheet>
     );
   }
 
@@ -49,7 +49,7 @@ export default function MergeSheet() {
   }
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader
         title={`Merger #${pr.id}`}
         subtitle={
@@ -58,7 +58,7 @@ export default function MergeSheet() {
           </Mono>
         }
       />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 10, paddingBottom: 16 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <View style={{ gap: 10, paddingBottom: 16 }}>
         <Text style={s.section}>STRATÉGIE</Text>
         <Card style={{ padding: 0, backgroundColor: C.surface2 }}>
           {pr.strategies.map((m, i) => (
@@ -101,8 +101,8 @@ export default function MergeSheet() {
             {running > 0 && <Text style={{ color: C.orange, fontSize: 12 }}>• {running} check(s) encore en cours</Text>}
           </Card>
         )}
-      </ScrollView>
+      </View>
       <Button title={busy ? 'Merge en cours…' : `Merger dans ${pr.target}`} onPress={busy ? undefined : confirm} style={{ opacity: busy ? 0.6 : 1 }} />
-    </View>
+    </Sheet>
   );
 }

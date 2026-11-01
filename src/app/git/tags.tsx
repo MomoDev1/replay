@@ -1,8 +1,8 @@
 import { Tag as TagIcon } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 
-import { Button, Card, Mono, s, SheetHeader } from '@/components/ui';
+import { Button, Card, Mono, s, Sheet, SheetHeader } from '@/components/ui';
 import { ago, git, type Tag } from '@/lib/git';
 import { sq } from '@/lib/ssh';
 import { act, useGit } from '@/store/git';
@@ -62,9 +62,28 @@ export default function TagsSheet() {
   );
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader title="Tags" subtitle={<Text style={s.muted}>{`${list.length} tag${list.length > 1 ? 's' : ''} · ${g?.repo ?? ''}`}</Text>} />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 10 }} keyboardShouldPersistTaps="handled">
+      <Text style={[s.section, { marginBottom: 6 }]}>{`NOUVEAU TAG SUR ${st?.oid?.slice(0, 7) ?? 'HEAD'}`}</Text>
+      <TextInput
+        value={name}
+        onChangeText={setName}
+        autoCapitalize="none"
+        autoCorrect={false}
+        placeholder="v1.0.0"
+        placeholderTextColor={C.dim}
+        style={{ backgroundColor: C.surface2, color: C.text, borderRadius: 8, padding: 10, fontFamily: mono, fontSize: 13 }}
+      />
+      <TextInput
+        value={msg}
+        onChangeText={setMsg}
+        placeholder="Message (optionnel → tag annoté)"
+        placeholderTextColor={C.dim}
+        style={{ backgroundColor: C.surface2, color: C.text, borderRadius: 8, padding: 10, fontSize: 13, marginTop: 8 }}
+      />
+      {exists && <Text style={{ color: C.orange, fontSize: 12, marginTop: 6 }}>Ce tag existe déjà.</Text>}
+      <Button title={busy === 'create' ? 'Création…' : 'Créer le tag'} style={{ marginTop: 10, opacity: canCreate ? 1 : 0.5 }} onPress={create} />
+      <View style={{ gap: 10, marginTop: 20 }}>
         {!list.length && <Text style={[s.muted, { textAlign: 'center', marginTop: 20 }]}>Aucun tag.</Text>}
         {list.map((t) => (
           <Card key={t.name} style={{ backgroundColor: C.surface2 }}>
@@ -91,27 +110,7 @@ export default function TagsSheet() {
             </View>
           </Card>
         ))}
-      </ScrollView>
-
-      <Text style={[s.section, { marginTop: 12, marginBottom: 6 }]}>{`NOUVEAU TAG SUR ${st?.oid?.slice(0, 7) ?? 'HEAD'}`}</Text>
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        autoCapitalize="none"
-        autoCorrect={false}
-        placeholder="v1.0.0"
-        placeholderTextColor={C.dim}
-        style={{ backgroundColor: C.surface2, color: C.text, borderRadius: 8, padding: 10, fontFamily: mono, fontSize: 13 }}
-      />
-      <TextInput
-        value={msg}
-        onChangeText={setMsg}
-        placeholder="Message (optionnel → tag annoté)"
-        placeholderTextColor={C.dim}
-        style={{ backgroundColor: C.surface2, color: C.text, borderRadius: 8, padding: 10, fontSize: 13, marginTop: 8 }}
-      />
-      {exists && <Text style={{ color: C.orange, fontSize: 12, marginTop: 6 }}>Ce tag existe déjà.</Text>}
-      <Button title={busy === 'create' ? 'Création…' : 'Créer le tag'} style={{ marginTop: 10, opacity: canCreate ? 1 : 0.5 }} onPress={create} />
-    </View>
+      </View>
+    </Sheet>
   );
 }

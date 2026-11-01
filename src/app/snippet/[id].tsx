@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { ClipboardPaste, TriangleAlert } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { asciiPunct, parseVars, resolveCmd } from '@/components/snippet-row';
-import { Button, EnvBadge, Mono, s, SheetHeader } from '@/components/ui';
+import { Button, EnvBadge, Mono, s, Sheet, SheetHeader } from '@/components/ui';
 import { useSheetKeyboardInset } from '@/hooks/use-sheet-keyboard';
 import type { Snippet } from '@/lib/types';
 import { pasteText, useSession } from '@/store/session';
@@ -17,9 +17,9 @@ export default function RunSnippet() {
 
   if (!sn) {
     return (
-      <View style={s.sheet}>
+      <Sheet>
         <SheetHeader title="Snippet introuvable" />
-      </View>
+      </Sheet>
     );
   }
 
@@ -84,7 +84,8 @@ function RunForm({ sn }: { sn: Snippet }) {
   );
 
   return (
-    <View style={s.sheet}>
+    // Android: the keyboard height pads the scroll so the footer can be scrolled above the keyboard.
+    <Sheet contentContainerStyle={{ paddingBottom: 40 + kb }}>
       <SheetHeader
         title={sn.title}
         subtitle={
@@ -96,44 +97,40 @@ function RunForm({ sn }: { sn: Snippet }) {
           )
         }
       />
-      {/* Android: with the keyboard open the footer scrolls with the form, otherwise it sits behind the keyboard. */}
-      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: kb }}>
-        <View style={{ backgroundColor: C.bg, borderRadius: 10, padding: 12 }}>
-          <Mono style={{ fontSize: 12 }} selectable>
-            $ {resolved}
-          </Mono>
+      <View style={{ backgroundColor: C.bg, borderRadius: 10, padding: 12 }}>
+        <Mono style={{ fontSize: 12 }} selectable>
+          $ {resolved}
+        </Mono>
+      </View>
+      {vars.map((v) => (
+        <View key={v.name} style={{ marginTop: 14 }}>
+          <Text style={[s.section, { marginBottom: 8 }]}>{v.name}</Text>
+          {v.choices.length ? (
+            <View style={[s.row, { gap: 8, flexWrap: 'wrap' }]}>
+              {v.choices.map((c) => {
+                const on = vals[v.name] === c;
+                return (
+                  <Pressable key={c} onPress={() => setVals((p) => ({ ...p, [v.name]: c }))} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: on ? C.accent : C.border, backgroundColor: on ? C.accentBg : C.surface2 }}>
+                    <Mono style={{ fontSize: 12, color: on ? C.accent : C.text }}>{c}</Mono>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <TextInput
+              value={vals[v.name]}
+              onChangeText={(t) => setVals((p) => ({ ...p, [v.name]: t }))}
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              autoComplete="off"
+              returnKeyType="done"
+              style={{ backgroundColor: C.surface2, color: C.text, borderRadius: 8, padding: 10 }}
+            />
+          )}
         </View>
-        {vars.map((v) => (
-          <View key={v.name} style={{ marginTop: 14 }}>
-            <Text style={[s.section, { marginBottom: 8 }]}>{v.name}</Text>
-            {v.choices.length ? (
-              <View style={[s.row, { gap: 8, flexWrap: 'wrap' }]}>
-                {v.choices.map((c) => {
-                  const on = vals[v.name] === c;
-                  return (
-                    <Pressable key={c} onPress={() => setVals((p) => ({ ...p, [v.name]: c }))} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: on ? C.accent : C.border, backgroundColor: on ? C.accentBg : C.surface2 }}>
-                      <Mono style={{ fontSize: 12, color: on ? C.accent : C.text }}>{c}</Mono>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : (
-              <TextInput
-                value={vals[v.name]}
-                onChangeText={(t) => setVals((p) => ({ ...p, [v.name]: t }))}
-                autoCapitalize="none"
-                autoCorrect={false}
-                spellCheck={false}
-                autoComplete="off"
-                returnKeyType="done"
-                style={{ backgroundColor: C.surface2, color: C.text, borderRadius: 8, padding: 10 }}
-              />
-            )}
-          </View>
-        ))}
-        {!!kb && footer}
-      </ScrollView>
-      {!kb && footer}
-    </View>
+      ))}
+      {footer}
+    </Sheet>
   );
 }

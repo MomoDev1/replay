@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { Plus, Search } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 
-import { Button, Mono, Radio, s, SheetHeader } from '@/components/ui';
+import { Button, Mono, Radio, s, Sheet, SheetHeader } from '@/components/ui';
 import { ago, branches as listBranches, git, type Branch } from '@/lib/git';
 import { sq } from '@/lib/ssh';
 import { act, currentRepo, useGit } from '@/store/git';
@@ -89,13 +89,19 @@ export default function BranchSheet() {
   );
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader title="Changer de branche" />
       <View style={[s.row, { backgroundColor: C.surface2, borderRadius: 10, paddingHorizontal: 12, gap: 8 }]}>
         <Search size={14} color={C.muted} />
         <TextInput value={q} onChangeText={setQ} autoCapitalize="none" autoCorrect={false} placeholder="Rechercher ou nommer une branche…" placeholderTextColor={C.dim} style={{ flex: 1, color: C.text, paddingVertical: 9 }} />
       </View>
-      <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+      {dirty && <Text style={{ color: C.orange, fontSize: 12, marginVertical: 10 }}>{st!.files.length} fichier{st!.files.length > 1 ? 's' : ''} modifié{st!.files.length > 1 ? 's' : ''} seront mis de côté (stash) avant le changement.</Text>}
+      <Button
+        title={busy ? 'Changement…' : selected ? (selected.current ? 'Branche actuelle' : `Basculer sur ${localName(selected)}`) : 'Choisis une branche'}
+        style={{ marginTop: dirty ? 0 : 10, opacity: selected && !selected.current && !busy ? 1 : 0.5 }}
+        onPress={checkout}
+      />
+      <View>
         {canCreate && (
           <Pressable onPress={() => withStash(newName, (repo) => git(repo, `switch -c ${sq(newName)}`))} style={[s.row, { gap: 10, paddingVertical: 12 }]}>
             <Plus size={18} color={C.accent} />
@@ -115,13 +121,7 @@ export default function BranchSheet() {
             <Text style={{ color: C.dim, fontSize: 11, marginTop: 12 }}>Appui long sur une branche locale pour la supprimer.</Text>
           </>
         )}
-      </ScrollView>
-      {dirty && <Text style={{ color: C.orange, fontSize: 12, marginVertical: 10 }}>{st!.files.length} fichier{st!.files.length > 1 ? 's' : ''} modifié{st!.files.length > 1 ? 's' : ''} seront mis de côté (stash) avant le changement.</Text>}
-      <Button
-        title={busy ? 'Changement…' : selected ? (selected.current ? 'Branche actuelle' : `Basculer sur ${localName(selected)}`) : 'Choisis une branche'}
-        style={{ marginTop: dirty ? 0 : 10, opacity: selected && !selected.current && !busy ? 1 : 0.5 }}
-        onPress={checkout}
-      />
-    </View>
+      </View>
+    </Sheet>
   );
 }

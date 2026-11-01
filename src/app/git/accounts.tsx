@@ -1,8 +1,8 @@
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Text, TextInput, View } from 'react-native';
 
-import { Button, Card, Mono, s, SheetHeader } from '@/components/ui';
+import { Button, Card, Mono, s, Sheet, SheetHeader } from '@/components/ui';
 import { bitbucketWhoAmI, getCreds, githubWhoAmI, setBitbucketCreds, setGithubCreds } from '@/lib/forge';
 import { C, mono } from '@/theme';
 
@@ -82,9 +82,9 @@ export default function Accounts() {
   }
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader title="Comptes Git" subtitle={<Text style={s.muted}>Pour gérer les pull requests GitHub et Bitbucket</Text>} />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 14, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <View style={{ gap: 14 }}>
         <Card style={{ backgroundColor: C.surface2, gap: 8 }}>
           <View style={[s.row, { justifyContent: 'space-between' }]}>
             <Text style={s.h2}>GitHub</Text>
@@ -123,7 +123,7 @@ export default function Accounts() {
         </Card>
 
         <Text style={[s.muted, { fontSize: 11, textAlign: 'center' }]}>Les jetons sont chiffrés dans le trousseau de l’appareil et envoyés uniquement à api.github.com / api.bitbucket.org.</Text>
-      </ScrollView>
-    </View>
+      </View>
+    </Sheet>
   );
 }

@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Text, TextInput, View } from 'react-native';
+import { Alert, Text, TextInput } from 'react-native';
 
-import { Button, Mono, s, Segmented, SheetHeader } from '@/components/ui';
+import { Button, Mono, s, Segmented, Sheet, SheetHeader } from '@/components/ui';
 import { create, join } from '@/lib/files';
 import { asciiPunct } from '@/lib/text';
 import { currentDir, open } from '@/store/code';
@@ -33,7 +33,7 @@ export default function NewEntry() {
   }
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader
         title="Nouveau"
         subtitle={
@@ -63,6 +63,6 @@ export default function NewEntry() {
         style={{ backgroundColor: C.surface2, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, color: C.text, fontFamily: mono, fontSize: 14 }}
       />
       <Button title={busy ? 'Création…' : 'Créer'} style={{ marginTop: 14 }} onPress={submit} />
-    </View>
+    </Sheet>
   );
 }

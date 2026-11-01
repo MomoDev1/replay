@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { Search, Star } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { PlayButton, plainCmd, runSnippet } from '@/components/snippet-row';
-import { Mono, s, Segmented, SheetHeader } from '@/components/ui';
+import { Mono, s, Segmented, Sheet, SheetHeader } from '@/components/ui';
 import { pasteText, useSession } from '@/store/session';
 import { getHistory, pushHistory, useServerSnippets } from '@/store/snippets';
 import { C } from '@/theme';
@@ -26,14 +26,14 @@ export default function QuickCommands() {
   }
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader title="Commandes rapides" />
       <View style={[s.row, { backgroundColor: C.surface2, borderRadius: 10, paddingHorizontal: 12, gap: 8, marginBottom: 12 }]}>
         <Search size={14} color={C.muted} />
         <TextInput value={q} onChangeText={setQ} placeholder="Filtrer…" placeholderTextColor={C.dim} style={{ flex: 1, color: C.text, paddingVertical: 9 }} />
       </View>
       <Segmented options={[{ value: 'fav', label: '★ Favoris' }, { value: 'hist', label: 'Historique' }]} value={tab} onChange={setTab} />
-      <ScrollView contentContainerStyle={{ paddingVertical: 12, gap: 14 }}>
+      <View style={{ paddingVertical: 12, gap: 14 }}>
         {tab === 'fav' &&
           favs.map((sn) => (
             <View key={sn.id} style={[s.row, { gap: 10 }]}>
@@ -63,7 +63,7 @@ export default function QuickCommands() {
         <Pressable onPress={() => router.replace('/snippets')} style={{ alignItems: 'center', marginTop: 8 }}>
           <Text style={{ color: C.accent, fontWeight: '600' }}>Gérer les snippets →</Text>
         </Pressable>
-      </ScrollView>
-    </View>
+      </View>
+    </Sheet>
   );
 }

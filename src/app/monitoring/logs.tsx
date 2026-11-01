@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { FileText, Terminal } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
-import { Button, Mono, s, Segmented, SheetHeader } from '@/components/ui';
+import { Button, Mono, s, Segmented, Sheet, SheetHeader } from '@/components/ui';
 import { detectLogFiles, detectServices, type LogSource } from '@/lib/monitor';
 import { asciiPunct } from '@/lib/text';
 import { logSourceFor, setLogSource } from '@/store/monitor';
@@ -57,7 +57,7 @@ export default function LogSourceSheet() {
   const input = { flex: 1, color: C.text, paddingVertical: 9, fontFamily: mono, fontSize: 13 } as const;
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader title="Source des logs" subtitle={<Text style={s.muted}>{server?.name}</Text>} />
       <Segmented
         value={kind}
@@ -104,7 +104,7 @@ export default function LogSourceSheet() {
 
       <Button title="Suivre ces logs" style={{ marginTop: 12, opacity: valid ? 1 : 0.5 }} onPress={submit} />
 
-      <ScrollView style={{ flex: 1, marginTop: 16 }} keyboardShouldPersistTaps="handled">
+      <View style={{ marginTop: 16 }}>
         {kind === 'journal' && (
           <>
             <Text style={[s.section, { marginBottom: 4 }]}>SERVICES ACTIFS</Text>
@@ -130,7 +130,7 @@ export default function LogSourceSheet() {
             ))}
           </>
         )}
-      </ScrollView>
-    </View>
+      </View>
+    </Sheet>
   );
 }

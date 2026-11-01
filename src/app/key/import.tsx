@@ -3,9 +3,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 
-import { Button, Card, s, SectionLabel, SheetHeader } from '@/components/ui';
+import { Button, Card, s, SectionLabel, Sheet, SheetHeader } from '@/components/ui';
 import { asSshError } from '@/lib/ssh';
 import { useServers } from '@/store/servers';
 import { C, mono } from '@/theme';
@@ -43,7 +43,7 @@ export default function ImportKey() {
   }
 
   return (
-    <ScrollView style={s.sheet} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+    <Sheet>
       <SheetHeader title="Importer une clé" subtitle={<Text style={s.muted}>La clé privée reste chiffrée sur cet appareil.</Text>} />
       <View style={[s.row, { gap: 8 }]}>
         <Button title="Depuis un fichier" variant="ghost" style={{ flex: 1 }} onPress={fromFile} />
@@ -65,6 +65,6 @@ export default function ImportKey() {
       <Pressable onPress={() => router.back()} style={{ alignItems: 'center', padding: 12 }}>
         <Text style={s.muted}>Annuler</Text>
       </Pressable>
-    </ScrollView>
+    </Sheet>
   );
 }

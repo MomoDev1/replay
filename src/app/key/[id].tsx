@@ -2,9 +2,9 @@ import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Copy, Share2 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, ScrollView, Share, Text, View } from 'react-native';
+import { Alert, Share, Text, View } from 'react-native';
 
-import { Button, Card, Mono, s, SectionLabel, SheetHeader } from '@/components/ui';
+import { Button, Card, Mono, s, SectionLabel, Sheet, SheetHeader } from '@/components/ui';
 import { useServers } from '@/store/servers';
 import { C } from '@/theme';
 
@@ -41,7 +41,7 @@ export default function KeyDetail() {
   }
 
   return (
-    <ScrollView style={s.sheet} contentContainerStyle={{ paddingBottom: 40 }}>
+    <Sheet>
       <SheetHeader title={k.name} subtitle={<Mono style={{ color: C.muted, fontSize: 10 }} numberOfLines={1}>{k.type} · {k.fingerprint}</Mono>} />
 
       <SectionLabel>Clé publique</SectionLabel>
@@ -63,6 +63,6 @@ export default function KeyDetail() {
       <Button title={copied === 'cmd' ? 'Commande copiée ✓' : 'Copier la commande'} variant="ghost" style={{ marginTop: 10 }} onPress={() => copy('cmd')} />
 
       <Button title="Supprimer la clé" variant="outlineDanger" style={{ marginTop: 28 }} onPress={remove} />
-    </ScrollView>
+    </Sheet>
   );
 }
