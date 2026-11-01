@@ -38,7 +38,7 @@ export default function RepoSheet() {
   const input = { flex: 1, color: C.text, paddingVertical: 9, fontFamily: mono, fontSize: 13 } as const;
 
   return (
-    <ScrollView style={s.sheet} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+    <ScrollView style={s.sheet} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" nestedScrollEnabled bounces={false} overScrollMode="never">
       <SheetHeader title="Choisir un dépôt" subtitle={<Text style={s.muted}>{server?.name}</Text>} />
       <Text style={[s.section, { marginBottom: 8 }]}>CHEMIN DU DÉPÔT</Text>
       <View style={[s.row, { backgroundColor: C.surface2, borderRadius: 10, paddingHorizontal: 12, gap: 8 }]}>
