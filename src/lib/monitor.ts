@@ -184,6 +184,38 @@ async function readCmd(cmd: string) {
   return { lines, reset: true, cursor: null };
 }
 
+export type LogShareContext = { server: string; host?: string | null; source: LogSource; filter?: string | null };
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * Lines as a Markdown block with their context (server, source, filter, date), ready to paste into
+ * Claude, Cursor, a ticket or a chat. `ask` prepends a request so an AI assistant knows what to do with them.
+ */
+export function logsAsMarkdown(lines: string[], ctx: LogShareContext, ask = false) {
+  const d = new Date();
+  const when = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  const body = lines.join('\n');
+  // A fence longer than any backtick run inside the logs, so they can never close it early.
+  const longest = Math.max(0, ...(body.match(/`+/g) ?? []).map((m) => m.length));
+  const fence = '`'.repeat(Math.max(3, longest + 1));
+  const host = ctx.host && ctx.host !== ctx.server ? ` (${ctx.host})` : '';
+  return [
+    ...(ask
+      ? ['Voici des logs de mon serveur. Identifie les erreurs et avertissements importants, explique leur cause probable et propose un correctif concret.', '']
+      : []),
+    `**Logs** — ${ctx.server}${host}`,
+    `- Source : \`${sourceLabel(ctx.source)}\``,
+    ...(ctx.filter ? [`- Filtre : ${ctx.filter}`] : []),
+    `- Capturés le ${when} · ${lines.length} ligne${lines.length > 1 ? 's' : ''}`,
+    '',
+    `${fence}log`,
+    body,
+    fence,
+    '',
+  ].join('\n');
+}
+
 /** Reads the lines added since `cursor` (or the last ones on the first call). `reset` = replace what is shown. */
 export async function readLogs(src: LogSource, cursor: Cursor): Promise<{ lines: string[]; reset: boolean; cursor: Cursor; hint?: string | null }> {
   if (src.kind === 'file') return readFile(src.path, cursor?.kind === 'file' ? cursor : null);
