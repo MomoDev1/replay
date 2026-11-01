@@ -1,6 +1,6 @@
 {
   "name": "relay",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "main": "expo-router/entry",
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.4",
