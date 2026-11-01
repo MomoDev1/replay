@@ -1,4 +1,4 @@
-import { uuid } from 'expo';
+import { randomUUID } from 'expo-crypto';
 import { useSQLiteContext } from 'expo-sqlite';
 import Storage from 'expo-sqlite/kv-store';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -37,7 +37,7 @@ export function SnippetsProvider({ children }: { children: ReactNode }) {
     () => ({
       snippets,
       async save(input, id) {
-        const sid = id ?? uuid.v4();
+        const sid = id ?? randomUUID();
         if (id) await db.runAsync('UPDATE snippets SET server_id = ?, title = ?, cmd = ?, fav = ? WHERE id = ?', input.serverId, input.title, input.cmd, input.fav ? 1 : 0, sid);
         else await db.runAsync('INSERT INTO snippets (id, server_id, title, cmd, fav, created_at) VALUES (?, ?, ?, ?, ?, ?)', sid, input.serverId, input.title, input.cmd, input.fav ? 1 : 0, Date.now());
         await reload();
