@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Star } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { asciiPunct, parseVars } from '@/components/snippet-row';
-import { Button, Mono, s, Segmented, SheetHeader } from '@/components/ui';
+import { Button, Mono, s, Segmented, Sheet, SheetHeader } from '@/components/ui';
 import { useSheetKeyboardInset } from '@/hooks/use-sheet-keyboard';
 import { useSession } from '@/store/session';
 import { useSnippets } from '@/store/snippets';
@@ -42,9 +42,10 @@ export default function EditSnippet() {
   const submitButton = <Button title={existing ? 'Enregistrer' : 'Créer le snippet'} onPress={submit} style={{ opacity: valid ? 1 : 0.5 }} />;
 
   return (
-    <View style={s.sheet}>
+    // Android: the keyboard height pads the scroll so the button can be scrolled above the keyboard.
+    <Sheet contentContainerStyle={{ paddingBottom: 40 + kb }}>
       <SheetHeader title={existing ? 'Modifier le snippet' : 'Nouveau snippet'} />
-      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={{ gap: 14, paddingBottom: 20 + kb }}>
+      <View style={{ gap: 14 }}>
         <View>
           <Text style={[s.section, { marginBottom: 8 }]}>TITRE</Text>
           <TextInput value={title} onChangeText={setTitle} placeholder="Redémarrer un service" placeholderTextColor={C.dim} style={input} />
@@ -98,10 +99,8 @@ export default function EditSnippet() {
           <Star size={18} color={fav ? C.orange : C.dim} fill={fav ? C.orange : 'transparent'} />
           <Text style={{ color: C.text }}>Afficher dans les commandes rapides</Text>
         </Pressable>
-        {/* Android: with the keyboard open the button scrolls with the form, otherwise it sits behind the keyboard. */}
-        {!!kb && submitButton}
-      </ScrollView>
-      {!kb && submitButton}
-    </View>
+        {submitButton}
+      </View>
+    </Sheet>
   );
 }

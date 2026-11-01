@@ -1,6 +1,6 @@
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
-import { Button, Card, Mono, s, SheetHeader } from '@/components/ui';
+import { Button, Card, Mono, s, Sheet, SheetHeader } from '@/components/ui';
 import { ago, git, type Stash } from '@/lib/git';
 import { sq } from '@/lib/ssh';
 import { act, useGit } from '@/store/git';
@@ -25,9 +25,14 @@ export default function StashSheet() {
   );
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader title="Remises (stash)" subtitle={<Text style={s.muted}>{g?.status?.branch ?? ''}</Text>} />
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 10 }}>
+      <Button
+        title="Mettre de côté les modifications"
+        style={{ marginBottom: 16, opacity: dirty ? 1 : 0.5 }}
+        onPress={() => dirty && act((repo) => git(repo, `stash push -u -m ${sq(`hop: ${new Date().toLocaleString('fr-FR')}`)}`))}
+      />
+      <View style={{ gap: 10 }}>
         {!list.length && <Text style={[s.muted, { textAlign: 'center', marginTop: 20 }]}>Aucune remise.</Text>}
         {list.map((st) => (
           <Card key={st.ref} style={{ backgroundColor: C.surface2 }}>
@@ -44,12 +49,7 @@ export default function StashSheet() {
             </View>
           </Card>
         ))}
-      </ScrollView>
-      <Button
-        title="Mettre de côté les modifications"
-        style={{ marginTop: 12, opacity: dirty ? 1 : 0.5 }}
-        onPress={() => dirty && act((repo) => git(repo, `stash push -u -m ${sq(`hop: ${new Date().toLocaleString('fr-FR')}`)}`))}
-      />
-    </View>
+      </View>
+    </Sheet>
   );
 }

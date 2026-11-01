@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { Check } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
-import { Button, Mono, s, SheetHeader } from '@/components/ui';
+import { Button, Mono, s, Sheet, SheetHeader } from '@/components/ui';
 import { git, isStaged, isUnstaged } from '@/lib/git';
 import { sq } from '@/lib/ssh';
 import { act, useGit } from '@/store/git';
@@ -46,7 +46,7 @@ export default function CommitSheet() {
   }
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader title="Commit" subtitle={<Text style={s.muted}>sur {st?.branch ?? 'HEAD détachée'}</Text>} />
       <TextInput
         value={msg}
@@ -59,15 +59,15 @@ export default function CommitSheet() {
       />
       {unstaged.length > 0 && <Toggle on={all} label={`Inclure les ${unstaged.length} fichier${unstaged.length > 1 ? 's' : ''} non indexé${unstaged.length > 1 ? 's' : ''}`} onPress={() => setAll((a) => !a)} />}
       <Toggle on={push} label="Pousser ensuite (git push)" onPress={() => setPush((p) => !p)} />
-      <Text style={[s.section, { marginTop: 10, marginBottom: 6 }]}>{`${files.length} FICHIER${files.length > 1 ? 'S' : ''}`}</Text>
-      <ScrollView style={{ flex: 1 }}>
+      <Button title={busy ? 'Commit…' : 'Commit'} style={{ marginTop: 10, opacity: valid ? 1 : 0.5 }} onPress={submit} />
+      <Text style={[s.section, { marginTop: 16, marginBottom: 6 }]}>{`${files.length} FICHIER${files.length > 1 ? 'S' : ''}`}</Text>
+      <View>
         {files.map((f) => (
           <Mono key={f.path} style={{ fontSize: 12, color: C.muted, paddingVertical: 3 }} numberOfLines={1}>
             {f.path}
           </Mono>
         ))}
-      </ScrollView>
-      <Button title={busy ? 'Commit…' : 'Commit'} style={{ marginTop: 10, opacity: valid ? 1 : 0.5 }} onPress={submit} />
-    </View>
+      </View>
+    </Sheet>
   );
 }

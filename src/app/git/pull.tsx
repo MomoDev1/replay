@@ -1,9 +1,9 @@
 import { useLocalSearchParams } from 'expo-router';
 import { CircleCheck, CircleX } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
-import { Mono, s, SheetHeader } from '@/components/ui';
+import { Mono, s, Sheet, SheetHeader } from '@/components/ui';
 import { git } from '@/lib/git';
 import { currentRepo, refresh, useGit } from '@/store/git';
 import { C } from '@/theme';
@@ -30,7 +30,7 @@ export default function PullSheet() {
   const failMsg = op === 'pull' && res?.output.includes('Not possible to fast-forward') ? 'Branches divergentes : fusionne ou rebase depuis le terminal' : 'Échec';
 
   return (
-    <View style={s.sheet}>
+    <Sheet>
       <SheetHeader
         title={`git ${cmd}`}
         subtitle={
@@ -42,13 +42,13 @@ export default function PullSheet() {
           </View>
         }
       />
-      <ScrollView style={{ flex: 1, backgroundColor: C.bg, borderRadius: 10 }} contentContainerStyle={{ padding: 12, justifyContent: 'flex-end', flexGrow: 1 }}>
+      <View style={{ backgroundColor: C.bg, borderRadius: 10, padding: 12, minHeight: 160 }}>
         {lines.map((l, i) => (
           <Mono key={i} selectable style={{ fontSize: 11, lineHeight: 16, color: /^(fatal|error|CONFLICT|!)/.test(l.trim()) ? C.red : l === 'Fast-forward' ? C.green : C.muted }}>
             {l}
           </Mono>
         ))}
-      </ScrollView>
-    </View>
+      </View>
+    </Sheet>
   );
 }

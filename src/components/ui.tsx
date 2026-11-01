@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { X } from 'lucide-react-native';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewProps, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
 import { C, envColor, mono, type Env } from '@/theme';
 
@@ -82,6 +82,27 @@ export function SheetHeader({ title, subtitle }: { title: string; subtitle?: Rea
   );
 }
 
+/**
+ * Root of every form sheet: the whole sheet scrolls.
+ * On iOS, react-native-screens resizes the sheet's ScrollView to the sheet's frame and (on Fabric) pins it to
+ * the sheet's top-left corner, so a ScrollView placed under a header or a search field is drawn over them.
+ * Making the ScrollView the sheet's root is the only layout it handles correctly: never nest a vertical
+ * ScrollView or FlatList inside a sheet, render lists as plain children of `Sheet` instead.
+ */
+export function Sheet({ children, contentContainerStyle, ...rest }: ScrollViewProps) {
+  return (
+    <ScrollView
+      style={s.sheetRoot}
+      contentContainerStyle={[s.sheetContent, contentContainerStyle]}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="interactive"
+      automaticallyAdjustKeyboardInsets
+      {...rest}>
+      {children}
+    </ScrollView>
+  );
+}
+
 export function Radio({ on }: { on: boolean }) {
   return (
     <View style={[s.radio, on && { borderColor: C.accent }]}>
@@ -110,4 +131,6 @@ export const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: C.border },
   sheet: { flex: 1, backgroundColor: C.surface, padding: 20 },
+  sheetRoot: { flex: 1, backgroundColor: C.surface },
+  sheetContent: { padding: 20, paddingBottom: 40 },
 });
