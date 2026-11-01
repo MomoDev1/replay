@@ -9,7 +9,8 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "dev.relay.app",
+      "bundleIdentifier": "dev.relay.app.med",
+      "appleTeamId": "GT47CA43NM",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "Hop se connecte en SSH aux serveurs de ton réseau local."
       }
@@ -46,7 +47,15 @@
           "faceIDPermission": "Hop utilise Face ID pour confirmer les actions sensibles sur les serveurs de production."
         }
       ],
-      "./modules/relay-ssh/app.plugin.js"
+      "./modules/relay-ssh/app.plugin.js",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.0"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
