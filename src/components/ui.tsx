@@ -130,7 +130,6 @@ export const s = StyleSheet.create({
   radioIn: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.accent },
   row: { flexDirection: 'row', alignItems: 'center' },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: C.border },
-  sheet: { flex: 1, backgroundColor: C.surface, padding: 20 },
   sheetRoot: { flex: 1, backgroundColor: C.surface },
   sheetContent: { padding: 20, paddingBottom: 40 },
 });

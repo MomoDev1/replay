@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { FolderGit2, Search } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
-import { Button, Mono, s, SheetHeader } from '@/components/ui';
+import { Button, Mono, s, Sheet, SheetHeader } from '@/components/ui';
 import { shPath } from '@/lib/git';
 import { asciiPunct } from '@/lib/text';
 import { exec, useSession } from '@/store/session';
@@ -38,7 +38,7 @@ export default function RepoSheet() {
   const input = { flex: 1, color: C.text, paddingVertical: 9, fontFamily: mono, fontSize: 13 } as const;
 
   return (
-    <ScrollView style={s.sheet} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+    <Sheet contentContainerStyle={{ paddingBottom: 60 }} keyboardDismissMode="on-drag">
       <SheetHeader title="Choisir un dépôt" subtitle={<Text style={s.muted}>{server?.name}</Text>} />
       <Text style={[s.section, { marginBottom: 8 }]}>CHEMIN DU DÉPÔT</Text>
       <View style={[s.row, { backgroundColor: C.surface2, borderRadius: 10, paddingHorizontal: 12, gap: 8 }]}>
@@ -75,6 +75,6 @@ export default function RepoSheet() {
         ))}
       </View>
       {found?.length ? <Button title="Utiliser ce dépôt" style={{ marginTop: 14 }} onPress={() => choose(path)} /> : null}
-    </ScrollView>
+    </Sheet>
   );
 }
