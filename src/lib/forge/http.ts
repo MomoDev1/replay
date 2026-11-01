@@ -109,7 +109,12 @@ export async function request<T>(url: string, auth: string, opts: Req = {}): Pro
   try {
     res = await fetch(url, {
       method: opts.method ?? 'GET',
+      // GitHub/Bitbucket send `Cache-Control: max-age=60`; the native HTTP cache (NSURLCache on iOS)
+      // would then serve stale lists, e.g. a just-merged PR still shown as open. Always hit the API.
+      cache: 'no-store',
       headers: {
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
         Authorization: auth,
         ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...opts.headers,
