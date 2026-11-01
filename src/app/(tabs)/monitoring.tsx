@@ -1,11 +1,13 @@
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import { router, useIsFocused } from 'expo-router';
-import { Activity, ChevronRight, Pause, Play } from 'lucide-react-native';
+import { Activity, Check, ChevronRight, Copy, ListChecks, Pause, Play, Share2, Sparkles, TextSelect, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, AppState, FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, FlatList, Pressable, Share, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Dot, Mono, s } from '@/components/ui';
-import { bytes, cpuUsage, duration, levelOf, readLogs, sample, sourceLabel, type Cursor, type Level, type LogLine, type LogSource, type Stats } from '@/lib/monitor';
+import { bytes, cpuUsage, duration, levelOf, logsAsMarkdown, readLogs, sample, sourceLabel, type Cursor, type Level, type LogLine, type LogSource, type Stats } from '@/lib/monitor';
 import type { Server } from '@/lib/types';
 import { useLogSource } from '@/store/monitor';
 import { useSession } from '@/store/session';
@@ -58,6 +60,21 @@ function Tile({ label, value, warn, children }: { label: string; value: string; 
       </View>
       {children}
     </Card>
+  );
+}
+
+function BarAction({ label, icon, onPress, disabled, primary }: { label: string; icon: ReactNode; onPress: () => void; disabled?: boolean; primary?: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={4}
+      style={{ flex: 1, alignItems: 'center', gap: 3, paddingVertical: 6, borderRadius: 8, backgroundColor: primary ? C.surface2 : 'transparent', opacity: disabled ? 0.4 : 1 }}>
+      {icon}
+      <Text style={{ color: C.text, fontSize: 10, fontWeight: '600' }} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -155,14 +172,90 @@ function Dashboard({ server }: { server: Server }) {
   const [paused, setPaused] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
+  // Selection mode: ids of the picked lines (null = not selecting). Following pauses meanwhile so the list stays put.
+  const [picked, setPicked] = useState<Set<number> | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const anchor = useRef<number | null>(null);
+  const selecting = picked !== null;
+  const count = picked?.size ?? 0;
 
   const { stats, cpu, error } = useStats(active);
-  const logs = useLogs(src, active && !paused);
+  const logs = useLogs(src, active && !paused && !selecting);
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return logs.lines.filter((l) => (filter === 'all' || l.lvl === filter) && (!needle || l.text.toLowerCase().includes(needle))).reverse();
   }, [logs.lines, filter, q]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(null), 1600);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  function startSelect(id?: number) {
+    Haptics.selectionAsync().catch(() => {});
+    anchor.current = id ?? null;
+    setPicked(new Set(id == null ? [] : [id]));
+  }
+
+  function endSelect() {
+    anchor.current = null;
+    setPicked(null);
+  }
+
+  function toggle(id: number) {
+    anchor.current = id;
+    setPicked((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
+  /** Long-press while selecting: picks every visible line between the last tapped one and this one. */
+  function selectRange(id: number) {
+    const from = anchor.current;
+    if (from == null) return toggle(id);
+    Haptics.selectionAsync().catch(() => {});
+    const [lo, hi] = from < id ? [from, id] : [id, from];
+    setPicked((p) => {
+      const n = new Set(p);
+      for (const l of shown) if (l.id >= lo && l.id <= hi) n.add(l.id);
+      return n;
+    });
+    anchor.current = id;
+  }
+
+  const allPicked = !!picked && shown.length > 0 && shown.every((l) => picked.has(l.id));
+
+  /** Picked lines (or every visible line when nothing is selected), oldest first like in the source. */
+  function exported() {
+    const list = picked?.size ? logs.lines.filter((l) => picked.has(l.id)) : [...shown].reverse();
+    return list.map((l) => l.text);
+  }
+
+  function context() {
+    const parts = [filter !== 'all' ? (filter === 'ERROR' ? 'erreurs' : 'avertissements') : '', q.trim() ? `« ${q.trim()} »` : ''].filter(Boolean);
+    return { server: server.name, host: stats?.host, source: src, filter: picked?.size ? `${parts.length ? parts.join(' · ') + ' · ' : ''}sélection manuelle` : parts.join(' · ') || null };
+  }
+
+  async function copy(kind: 'raw' | 'ai') {
+    const lines = exported();
+    if (!lines.length) return;
+    await Clipboard.setStringAsync(kind === 'raw' ? lines.join('\n') : logsAsMarkdown(lines, context(), true));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setCopied(kind === 'raw' ? `${lines.length} ligne${lines.length > 1 ? 's' : ''} copiée${lines.length > 1 ? 's' : ''}` : 'Copié pour Claude / Cursor');
+  }
+
+  async function share() {
+    const lines = exported();
+    if (!lines.length) return;
+    try {
+      await Share.share({ message: logsAsMarkdown(lines, context(), true), title: `Logs ${server.name}` }, { subject: `Logs ${server.name}`, dialogTitle: 'Partager les logs' });
+    } catch {}
+  }
 
   const cpuNow = cpu.length ? Math.round(cpu[cpu.length - 1]) : null;
   const memUsed = stats ? stats.mem.total - stats.mem.available : 0;
@@ -258,6 +351,12 @@ function Dashboard({ server }: { server: Server }) {
           <Text style={{ color: paused ? C.muted : C.green, fontSize: 11 }}>{paused ? 'En pause' : 'En direct'}</Text>
           {!paused && <Pause size={10} color={C.green} />}
         </Pressable>
+        <Pressable onPress={() => (selecting ? endSelect() : startSelect())} hitSlop={6} accessibilityLabel="Sélectionner des lignes" style={{ padding: 4, borderRadius: 8, backgroundColor: selecting ? C.surface2 : 'transparent' }}>
+          <TextSelect size={15} color={selecting ? C.accent : C.muted} />
+        </Pressable>
+        <Pressable onPress={share} disabled={!shown.length} hitSlop={6} accessibilityLabel="Partager les logs" style={{ padding: 4, opacity: shown.length ? 1 : 0.4 }}>
+          <Share2 size={15} color={C.muted} />
+        </Pressable>
       </View>
       <View style={[s.row, { gap: 6, marginTop: 8 }]}>
         <TextInput
@@ -289,6 +388,8 @@ function Dashboard({ server }: { server: Server }) {
         </Card>
       )}
       {logs.hint && <Text style={{ color: C.orange, fontSize: 11, marginTop: 8 }}>{logs.hint}</Text>}
+      {!selecting && shown.length > 0 && <Text style={{ color: C.dim, fontSize: 10, marginTop: 8 }}>Appui long sur une ligne pour sélectionner, copier ou partager.</Text>}
+      {selecting && <Text style={{ color: C.dim, fontSize: 10, marginTop: 8 }}>Touche les lignes à garder · appui long pour sélectionner toute une plage. Le suivi est en pause.</Text>}
       <View style={{ height: 8 }} />
     </View>
   );
@@ -296,13 +397,14 @@ function Dashboard({ server }: { server: Server }) {
   return (
     <SafeAreaView style={s.screen} edges={['top']}>
       <FlatList
+        extraData={picked}
         data={shown}
         keyExtractor={(l) => String(l.id)}
         ListHeaderComponent={header}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         initialNumToRender={40}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: selecting ? 96 : 16 }}
         ListEmptyComponent={
           logs.error ? undefined : logs.loading ? (
             <ActivityIndicator style={{ marginTop: 16 }} color={C.muted} />
@@ -310,14 +412,48 @@ function Dashboard({ server }: { server: Server }) {
             <Text style={[s.muted, { fontSize: 12, marginTop: 8 }]}>{logs.lines.length ? 'Aucune ligne ne correspond au filtre.' : 'Aucune ligne pour l’instant.'}</Text>
           )
         }
-        renderItem={({ item }) => (
-          <View style={{ paddingVertical: 2, paddingHorizontal: 4, borderRadius: 3, backgroundColor: item.lvl === 'ERROR' ? C.redBg : 'transparent' }}>
-            <Mono selectable style={{ fontSize: 10, lineHeight: 14, color: item.lvl === 'INFO' ? C.text : lvlColor[item.lvl] }}>
-              {item.text}
-            </Mono>
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const on = !!picked?.has(item.id);
+          return (
+            <Pressable
+              onPress={selecting ? () => toggle(item.id) : undefined}
+              onLongPress={() => (selecting ? selectRange(item.id) : startSelect(item.id))}
+              delayLongPress={350}
+              style={[
+                s.row,
+                { alignItems: 'flex-start', gap: 6, paddingVertical: 2, paddingHorizontal: 4, borderRadius: 3, backgroundColor: on ? C.accentBg : item.lvl === 'ERROR' ? C.redBg : 'transparent' },
+              ]}>
+              {selecting && (
+                <View style={{ width: 14, height: 14, marginTop: 1, borderRadius: 4, borderWidth: 1, borderColor: on ? C.accent : C.dim, backgroundColor: on ? C.accent : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                  {on && <Check size={10} color={C.bg} strokeWidth={3} />}
+                </View>
+              )}
+              <Mono style={{ flex: 1, fontSize: 10, lineHeight: 14, color: item.lvl === 'INFO' ? C.text : lvlColor[item.lvl] }}>{item.text}</Mono>
+            </Pressable>
+          );
+        }}
       />
+      {copied && (
+        <View pointerEvents="none" style={{ position: 'absolute', alignSelf: 'center', bottom: selecting ? 92 : 16, backgroundColor: C.surface2, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: C.border }}>
+          <Text style={{ color: C.text, fontSize: 12 }}>{copied}</Text>
+        </View>
+      )}
+      {selecting && (
+        <View style={{ position: 'absolute', left: 12, right: 12, bottom: 12, backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 6 }}>
+          <View style={[s.row, { justifyContent: 'space-between', paddingHorizontal: 6, paddingBottom: 4 }]}>
+            <Text style={{ color: C.muted, fontSize: 11 }}>{count ? `${count} ligne${count > 1 ? 's' : ''} sélectionnée${count > 1 ? 's' : ''}` : 'Aucune ligne sélectionnée'}</Text>
+            <Pressable onPress={endSelect} hitSlop={8} accessibilityLabel="Quitter la sélection">
+              <X size={14} color={C.muted} />
+            </Pressable>
+          </View>
+          <View style={[s.row, { gap: 4 }]}>
+            <BarAction label={allPicked ? 'Aucune' : 'Tout'} icon={<ListChecks size={16} color={C.text} />} onPress={() => setPicked(allPicked ? new Set() : new Set(shown.map((l) => l.id)))} disabled={!shown.length} />
+            <BarAction label="Copier" icon={<Copy size={16} color={C.text} />} onPress={() => copy('raw')} disabled={!count} />
+            <BarAction label="Pour l’IA" icon={<Sparkles size={16} color={C.accent} />} onPress={() => copy('ai')} disabled={!count} primary />
+            <BarAction label="Partager" icon={<Share2 size={16} color={C.text} />} onPress={share} disabled={!count} />
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
