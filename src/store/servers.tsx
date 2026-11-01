@@ -1,4 +1,4 @@
-import { uuid } from 'expo';
+import { randomUUID } from 'expo-crypto';
 import { useSQLiteContext } from 'expo-sqlite';
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
@@ -49,7 +49,7 @@ export function ServersProvider({ children }: { children: ReactNode }) {
 
   const store = useMemo<Store>(() => {
     async function insertKey(name: string, type: string, fingerprint: string, publicKey: string) {
-      const key: SshKey = { id: uuid.v4(), name, type, fingerprint, publicKey, createdAt: Date.now() };
+      const key: SshKey = { id: randomUUID(), name, type, fingerprint, publicKey, createdAt: Date.now() };
       await db.runAsync(
         'INSERT INTO ssh_keys (id, name, type, fingerprint, public_key, created_at) VALUES (?, ?, ?, ?, ?, ?)',
         key.id, key.name, key.type, key.fingerprint, key.publicKey, key.createdAt,
@@ -62,7 +62,7 @@ export function ServersProvider({ children }: { children: ReactNode }) {
       keys,
       ready,
       async saveServer(input, { id, password }) {
-        const sid = id ?? uuid.v4();
+        const sid = id ?? randomUUID();
         const vals = [input.name, input.host, input.port, input.user, input.env, input.auth, input.auth === 'key' ? input.keyId : null, input.path];
         if (id) {
           await db.runAsync('UPDATE servers SET name = ?, host = ?, port = ?, user = ?, env = ?, auth = ?, key_id = ?, path = ? WHERE id = ?', ...vals, sid);
