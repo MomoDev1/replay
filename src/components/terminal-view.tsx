@@ -56,6 +56,30 @@ export function TerminalView() {
 
   useEffect(() => () => unsub.current?.(), []);
 
+  // Id of the session the terminal shows, null until xterm is ready.
+  const shown = useRef<string | null>(null);
+  const latest = useRef<string | null>(null);
+  latest.current = session?.id ?? null;
+
+  function attach(id: string) {
+    shown.current = id;
+    unsub.current?.();
+    unsub.current = subscribeData((b64) => term.current?.write(b64));
+  }
+
+  // Reconnecting reuses the same xterm: remounting its WebView while this tab is hidden leaves it blank or frozen.
+  const sessionId = session?.id;
+  useEffect(() => {
+    if (!sessionId || shown.current === null || shown.current === sessionId) return;
+    term.current?.clear();
+    setCtrl(false);
+    setSelecting(false);
+    setSelection('');
+    setSearching(false);
+    setResults({ index: -1, count: 0 });
+    attach(sessionId);
+  }, [sessionId]);
+
   // Snippets and history are pasted through xterm (never executed): the user presses Enter themselves.
   useEffect(
     () =>
@@ -181,7 +205,6 @@ export function TerminalView() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <View style={{ flex: 1 }}>
           <XTerm
-            key={session.id}
             ref={term}
             background={C.bg}
             foreground={C.text}
@@ -190,10 +213,7 @@ export function TerminalView() {
             match={C.orange}
             // iOS: no prev/next/done bar above the keyboard, the key bar below replaces it
             dom={{ style: { flex: 1, backgroundColor: C.bg }, scrollEnabled: false, hideKeyboardAccessoryView: true }}
-            onReady={async () => {
-              unsub.current?.();
-              unsub.current = subscribeData((b64) => term.current?.write(b64));
-            }}
+            onReady={async () => attach(latest.current!)}
             onInput={async (b64) => sendB64(b64)}
             onResize={async (cols, rows) => resizeSession(cols, rows)}
             onCtrlConsumed={async () => setCtrl(false)}

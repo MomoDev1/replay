@@ -40,8 +40,16 @@ function touch() {
   idleTimer = setTimeout(() => closeSession('Déconnexion automatique après inactivité'), Number(t) * 60_000);
 }
 
+// The native reader starts with startShell, before openSession: keep that first output (prompt, motd).
+const early = new Map<string, string[]>();
+
 RelaySsh?.addListener('onData', ({ sessionId, data }) => {
-  if (sessionId !== current?.id) return;
+  if (sessionId !== current?.id) {
+    const chunks = early.get(sessionId) ?? [];
+    if (chunks.length < 64) chunks.push(data);
+    early.set(sessionId, chunks);
+    return;
+  }
   buffer.push(data);
   bufferSize += data.length;
   while (bufferSize > MAX_BUFFER && buffer.length > 1) bufferSize -= buffer.shift()!.length;
@@ -58,8 +66,9 @@ RelaySsh?.addListener('onClose', ({ sessionId, reason }) => {
 /** Called once the shell is started; replaces any previous session. */
 export function openSession(id: string, server: Server, latencyMs: number) {
   if (current?.open && current.id !== id) RelaySsh?.disconnect(current.id).catch(() => {});
-  buffer = [];
-  bufferSize = 0;
+  buffer = early.get(id) ?? [];
+  bufferSize = buffer.reduce((n, c) => n + c.length, 0);
+  early.clear();
   setCurrent({ id, server, latencyMs, open: true, closedReason: null });
   touch();
 }

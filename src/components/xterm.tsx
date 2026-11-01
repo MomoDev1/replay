@@ -19,6 +19,7 @@ export interface XTermRef extends DOMImperativeFactory {
   /** paste(text: string): types text at the prompt like a clipboard paste (bracketed if the shell asked for it), without Enter. */
   paste: (...args: JSONValue[]) => void;
   focus: () => void;
+  /** Wipes the screen and scrollback for a new session, then reports the size so its PTY matches. */
   clear: () => void;
   /** setSelectMode(on: boolean): in selection mode one-finger drags select text instead of scrolling. */
   setSelectMode: (...args: JSONValue[]) => void;
@@ -120,7 +121,14 @@ export default function XTerm({ ref, background, foreground, cursor, accent, mat
         term.current?.focus();
       },
       clear() {
-        term.current?.reset();
+        const t = term.current;
+        if (!t) return;
+        t.reset();
+        ctrl.current = false;
+        selecting.current = false;
+        lastQuery.current = '';
+        search.current?.clearDecorations();
+        onResize(t.cols, t.rows);
       },
       setSelectMode(on) {
         selecting.current = on === true;
