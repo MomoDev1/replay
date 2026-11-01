@@ -38,7 +38,7 @@ export default function RepoSheet() {
   const input = { flex: 1, color: C.text, paddingVertical: 9, fontFamily: mono, fontSize: 13 } as const;
 
   return (
-    <View style={s.sheet}>
+    <ScrollView style={s.sheet} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
       <SheetHeader title="Choisir un dépôt" subtitle={<Text style={s.muted}>{server?.name}</Text>} />
       <Text style={[s.section, { marginBottom: 8 }]}>CHEMIN DU DÉPÔT</Text>
       <View style={[s.row, { backgroundColor: C.surface2, borderRadius: 10, paddingHorizontal: 12, gap: 8 }]}>
@@ -57,17 +57,24 @@ export default function RepoSheet() {
           {searching ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '600' }}>Chercher</Text>}
         </Pressable>
       </View>
-      <ScrollView style={{ flex: 1, marginTop: 8 }}>
+      <View style={{ marginTop: 8 }}>
+        {found?.length ? <Text style={[s.muted, { fontSize: 12, marginBottom: 4 }]}>Touche un dépôt pour le sélectionner, puis « Utiliser ce dépôt ».</Text> : null}
         {found?.length === 0 && <Text style={[s.muted, { marginTop: 8 }]}>Aucun dépôt trouvé sous {base} (profondeur 4).</Text>}
         {found?.map((p) => (
-          <Pressable key={p} onPress={() => choose(p)} style={[s.row, { gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderColor: C.border }]}>
-            <FolderGit2 size={14} color={p === g?.repo ? C.accent : C.muted} />
-            <Mono style={{ fontSize: 12, flex: 1, color: p === g?.repo ? C.accent : C.text }} numberOfLines={1}>
+          <Pressable
+            key={p}
+            onPress={() => setPath(p)}
+            unstable_pressDelay={120}
+            style={({ pressed }) => [s.row, { gap: 10, paddingVertical: 12, paddingHorizontal: 6, borderRadius: 8, borderBottomWidth: 1, borderColor: C.border }, (pressed || p === path) && { backgroundColor: C.surface2 }]}
+          >
+            <FolderGit2 size={14} color={p === path ? C.accent : C.muted} />
+            <Mono style={{ fontSize: 12, flex: 1, color: p === path ? C.accent : C.text }} numberOfLines={1}>
               {p}
             </Mono>
           </Pressable>
         ))}
-      </ScrollView>
-    </View>
+      </View>
+      {found?.length ? <Button title="Utiliser ce dépôt" style={{ marginTop: 14 }} onPress={() => choose(path)} /> : null}
+    </ScrollView>
   );
 }
