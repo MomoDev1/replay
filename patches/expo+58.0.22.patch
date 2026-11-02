@@ -1,0 +1,54 @@
+diff --git a/node_modules/expo/build/dom/webview-wrapper.js b/node_modules/expo/build/dom/webview-wrapper.js
+index 02f713b..8b86d82 100644
+--- a/node_modules/expo/build/dom/webview-wrapper.js
++++ b/node_modules/expo/build/dom/webview-wrapper.js
+@@ -27,7 +27,8 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
+                 if (domImperativeHandlePropsRef.current?.includes(propName)) {
+                     return function(...args) {
+                         const serializedArgs = args.map((arg)=>JSON.stringify(arg)).join(',');
+-                        webviewRef.current?.injectJavaScript(`window._domRefProxy.${propName}(${serializedArgs})`);
++                        // The native view may not be mounted yet (or already gone): drop the call instead of an unhandled rejection.
++                        Promise.resolve(webviewRef.current?.injectJavaScript(`window._domRefProxy.${propName}(${serializedArgs})`)).catch(()=>{});
+                     };
+                 }
+                 if (typeof webviewRef.current?.[propName] === 'function') {
+@@ -49,7 +50,8 @@ const RawWebView = /*#__PURE__*/ React.forwardRef((props, ref)=>{
+     const [containerStyle, setContainerStyle] = React.useState(null);
+     const { debugZeroHeightStyle, debugOnLayout } = useDebugZeroHeight(dom);
+     const emit = React.useCallback((detail)=>{
+-        webviewRef.current?.injectJavaScript(getInjectEventScript(detail));
++        // Props emitted before the native view is mounted fail; they are re-sent on DOM_READY.
++        Promise.resolve(webviewRef.current?.injectJavaScript(getInjectEventScript(detail))).catch(()=>{});
+     }, [
+         webviewRef
+     ]);
+diff --git a/node_modules/expo/src/dom/webview-wrapper.tsx b/node_modules/expo/src/dom/webview-wrapper.tsx
+index c9d79a4..0d4410c 100644
+--- a/node_modules/expo/src/dom/webview-wrapper.tsx
++++ b/node_modules/expo/src/dom/webview-wrapper.tsx
+@@ -54,9 +54,12 @@ const RawWebView = React.forwardRef<object, Props>((props, ref) => {
+           if (domImperativeHandlePropsRef.current?.includes(propName)) {
+             return function (...args: any[]) {
+               const serializedArgs = args.map((arg) => JSON.stringify(arg)).join(',');
+-              webviewRef.current?.injectJavaScript(
+-                `window._domRefProxy.${propName}(${serializedArgs})`
+-              );
++              // The native view may not be mounted yet (or already gone): drop the call instead of an unhandled rejection.
++              Promise.resolve(
++                webviewRef.current?.injectJavaScript(
++                  `window._domRefProxy.${propName}(${serializedArgs})`
++                )
++              ).catch(() => {});
+             };
+           }
+           if (typeof webviewRef.current?.[propName] === 'function') {
+@@ -81,7 +84,8 @@ const RawWebView = React.forwardRef<object, Props>((props, ref) => {
+ 
+   const emit = React.useCallback(
+     (detail: BridgeMessage<any>) => {
+-      webviewRef.current?.injectJavaScript(getInjectEventScript(detail));
++      // Props emitted before the native view is mounted fail; they are re-sent on DOM_READY.
++      Promise.resolve(webviewRef.current?.injectJavaScript(getInjectEventScript(detail))).catch(() => {});
+     },
+     [webviewRef]
+   );
