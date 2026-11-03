@@ -3,7 +3,7 @@
     "name": "Hop",
     "slug": "relay",
     "version": "1.0.21",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "relay",
     "userInterfaceStyle": "dark",

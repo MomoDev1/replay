@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { X } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewProps, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { C, envColor, mono, type Env } from '@/theme';
 
@@ -88,12 +89,14 @@ export function SheetHeader({ title, subtitle }: { title: string; subtitle?: Rea
  * the sheet's top-left corner, so a ScrollView placed under a header or a search field is drawn over them.
  * Making the ScrollView the sheet's root is the only layout it handles correctly: never nest a vertical
  * ScrollView or FlatList inside a sheet, render lists as plain children of `Sheet` instead.
+ * In landscape an iPhone shows the sheet full screen: the side insets keep it clear of the notch.
  */
 export function Sheet({ children, contentContainerStyle, ...rest }: ScrollViewProps) {
+  const { left, right } = useSafeAreaInsets();
   return (
     <ScrollView
       style={s.sheetRoot}
-      contentContainerStyle={[s.sheetContent, contentContainerStyle]}
+      contentContainerStyle={[s.sheetContent, { paddingLeft: 20 + left, paddingRight: 20 + right }, contentContainerStyle]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       automaticallyAdjustKeyboardInsets

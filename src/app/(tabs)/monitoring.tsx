@@ -395,7 +395,7 @@ function Dashboard({ server }: { server: Server }) {
   );
 
   return (
-    <SafeAreaView style={s.screen} edges={['top']}>
+    <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
       <FlatList
         extraData={picked}
         data={shown}
@@ -470,7 +470,7 @@ export default function Monitoring() {
           <Text style={s.h2}>Aucune session</Text>
           <Text style={[s.muted, { textAlign: 'center' }]}>Connecte-toi à un serveur pour suivre sa charge et ses logs en direct.</Text>
         </View>
-        <Button title={server ? 'Se reconnecter' : 'Choisir un serveur'} style={{ marginTop: 24 }} onPress={() => (server ? router.push(`/connect/${server.id}`) : router.navigate('/'))} />
+        <Button title={server ? 'Se reconnecter' : 'Choisir un serveur'} style={{ marginTop: 24, width: '100%', maxWidth: 360, alignSelf: 'center' }} onPress={() => (server ? router.push(`/connect/${server.id}`) : router.navigate('/'))} />
       </SafeAreaView>
     );
   }

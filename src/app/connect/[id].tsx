@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Check, ShieldQuestion, X } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -42,6 +42,18 @@ function hints(err: SshError, sv: Server): [string, string][] {
     default:
       return [];
   }
+}
+
+// Landscape leaves ~350 pt of height: the content scrolls instead of pushing its buttons off screen,
+// and a column width keeps it readable across a wide screen.
+const col = { width: '100%', maxWidth: 520, alignSelf: 'center', padding: 20 } as const;
+
+function Centered({ children }: { children: ReactNode }) {
+  return (
+    <SafeAreaView style={s.screen}>
+      <ScrollView contentContainerStyle={[col, { flexGrow: 1, justifyContent: 'center' }]}>{children}</ScrollView>
+    </SafeAreaView>
+  );
 }
 
 export default function Connect() {
@@ -128,10 +140,10 @@ export default function Connect() {
 
   if (!server) {
     return (
-      <SafeAreaView style={[s.screen, { padding: 20, justifyContent: 'center' }]}>
+      <Centered>
         <Text style={[s.h2, { textAlign: 'center' }]}>Serveur introuvable</Text>
         <Button title="Retour" variant="ghost" style={{ marginTop: 20 }} onPress={() => router.back()} />
-      </SafeAreaView>
+      </Centered>
     );
   }
 
@@ -140,7 +152,7 @@ export default function Connect() {
   if (error) {
     return (
       <SafeAreaView style={s.screen}>
-        <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 60 }}>
+        <ScrollView contentContainerStyle={[col, { paddingTop: 60 }]}>
           <View style={{ alignSelf: 'center', width: 56, height: 56, borderRadius: 28, backgroundColor: C.redBg, alignItems: 'center', justifyContent: 'center' }}>
             <X size={28} color={C.red} />
           </View>
@@ -185,7 +197,7 @@ export default function Connect() {
 
   if (trust) {
     return (
-      <SafeAreaView style={[s.screen, { padding: 20, justifyContent: 'center' }]}>
+      <Centered>
         <View style={{ alignSelf: 'center', width: 56, height: 56, borderRadius: 28, backgroundColor: C.orangeBg, alignItems: 'center', justifyContent: 'center' }}>
           <ShieldQuestion size={28} color={C.orange} />
         </View>
@@ -207,12 +219,12 @@ export default function Connect() {
             router.back();
           }}
         />
-      </SafeAreaView>
+      </Centered>
     );
   }
 
   return (
-    <SafeAreaView style={[s.screen, { padding: 20, justifyContent: 'center' }]}>
+    <Centered>
       <ActivityIndicator size="large" color={C.orange} />
       <Text style={[s.h2, { textAlign: 'center', marginTop: 16 }]}>Connexion à {server.name}</Text>
       <Mono style={{ color: C.muted, textAlign: 'center', fontSize: 12, marginTop: 6 }}>{addr}</Mono>
@@ -239,6 +251,6 @@ export default function Connect() {
           router.back();
         }}
       />
-    </SafeAreaView>
+    </Centered>
   );
 }

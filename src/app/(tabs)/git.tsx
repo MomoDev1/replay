@@ -67,7 +67,7 @@ export default function GitScreen() {
           <Text style={s.h2}>Aucune session</Text>
           <Text style={[s.muted, { textAlign: 'center' }]}>Connecte-toi à un serveur pour gérer ses dépôts Git.</Text>
         </View>
-        <Button title={server ? 'Se reconnecter' : 'Choisir un serveur'} style={{ marginTop: 24 }} onPress={() => (server ? router.push(`/connect/${server.id}`) : router.navigate('/'))} />
+        <Button title={server ? 'Se reconnecter' : 'Choisir un serveur'} style={{ marginTop: 24, width: '100%', maxWidth: 360, alignSelf: 'center' }} onPress={() => (server ? router.push(`/connect/${server.id}`) : router.navigate('/'))} />
       </SafeAreaView>
     );
   }
@@ -99,7 +99,7 @@ export default function GitScreen() {
   }
 
   return (
-    <SafeAreaView style={s.screen} edges={['top']}>
+    <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={{ padding: 16 }} refreshControl={<RefreshControl refreshing={!!g?.loading && !!st} onRefresh={refresh} tintColor={C.muted} />}>
         <Text style={s.h1}>Git</Text>
         <Pressable onPress={() => router.push('/git/repo')}>
