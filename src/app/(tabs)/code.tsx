@@ -65,7 +65,7 @@ export default function CodeScreen() {
           <Text style={s.h2}>Aucune session</Text>
           <Text style={[s.muted, { textAlign: 'center' }]}>Connecte-toi à un serveur pour parcourir et éditer ses fichiers.</Text>
         </View>
-        <Button title={server ? 'Se reconnecter' : 'Choisir un serveur'} style={{ marginTop: 24 }} onPress={() => (server ? router.push(`/connect/${server.id}`) : router.navigate('/'))} />
+        <Button title={server ? 'Se reconnecter' : 'Choisir un serveur'} style={{ marginTop: 24, width: '100%', maxWidth: 360, alignSelf: 'center' }} onPress={() => (server ? router.push(`/connect/${server.id}`) : router.navigate('/'))} />
       </SafeAreaView>
     );
   }
@@ -74,7 +74,7 @@ export default function CodeScreen() {
   const crumbs = cwd ? cwd.split('/').filter(Boolean) : [];
 
   return (
-    <SafeAreaView style={s.screen} edges={['top']}>
+    <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
       <View style={[s.row, { paddingHorizontal: 16, paddingTop: 16, gap: 8 }]}>
         <Text style={[s.h1, { flex: 1 }]}>Code</Text>
         <Pressable onPress={() => router.push('/code/search')} style={{ backgroundColor: C.surface2, borderRadius: 10, padding: 9 }} disabled={!cwd}>

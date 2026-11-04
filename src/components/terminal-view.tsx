@@ -154,7 +154,7 @@ export function TerminalView() {
           <Text style={s.h2}>Aucune session</Text>
           <Text style={[s.muted, { textAlign: 'center' }]}>Connecte-toi à un serveur pour ouvrir un terminal.</Text>
         </View>
-        <Button title="Choisir un serveur" style={{ marginTop: 24 }} onPress={() => router.navigate('/')} />
+        <Button title="Choisir un serveur" style={{ marginTop: 24, width: '100%', maxWidth: 360, alignSelf: 'center' }} onPress={() => router.navigate('/')} />
       </SafeAreaView>
     );
   }
@@ -162,7 +162,7 @@ export function TerminalView() {
   const { server } = session;
 
   return (
-    <SafeAreaView style={s.screen} edges={['top']}>
+    <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
       <View style={[s.row, { paddingHorizontal: 12, paddingVertical: 8, gap: 10 }]}>
         <Pressable onPress={() => router.navigate('/')} hitSlop={8}>
           <ChevronLeft size={22} color={C.text} />

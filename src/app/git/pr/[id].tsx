@@ -161,7 +161,7 @@ export default function PrDetail() {
   const placeholder = compose.kind === 'changes' ? 'Explique les changements demandés…' : compose.kind === 'reply' ? `Réponse à ${compose.to.author}…` : 'Ajouter un commentaire…';
 
   return (
-    <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={s.screen} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled" refreshControl={<RefreshControl refreshing={!!mine?.loading && !!pr} onRefresh={reloadPr} tintColor={C.muted} />}>
           <View style={[s.row, { justifyContent: 'space-between' }]}>

@@ -50,7 +50,7 @@ export default function ServersScreen() {
   }
 
   return (
-    <SafeAreaView style={s.screen} edges={['top']}>
+    <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
       <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
         <View style={[s.row, { justifyContent: 'space-between' }]}>
           <View>
