@@ -9,6 +9,7 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/expo.icon",
+      "supportsTablet": true,
       "bundleIdentifier": "dev.relay.app.med",
       "appleTeamId": "GT47CA43NM",
       "infoPlist": {

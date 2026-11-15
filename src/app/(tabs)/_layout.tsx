@@ -1,14 +1,19 @@
 import { Tabs } from 'expo-router';
 import { Activity, CodeXml, GitBranch, Server, SquareTerminal } from 'lucide-react-native';
 
+import { Sidebar } from '@/components/sidebar';
+import { useTablet } from '@/hooks/use-tablet';
 import { C } from '@/theme';
 
 export default function TabsLayout() {
+  const { tablet, compact } = useTablet();
   return (
     <Tabs
+      tabBar={tablet ? (props) => <Sidebar {...props} compact={compact} /> : undefined}
       screenOptions={{
         headerShown: false,
-        tabBarHideOnKeyboard: true,
+        tabBarPosition: tablet ? 'left' : 'bottom',
+        tabBarHideOnKeyboard: !tablet,
         tabBarActiveTintColor: C.accent,
         tabBarInactiveTintColor: C.muted,
         tabBarStyle: { backgroundColor: C.bg, borderTopColor: C.border },
