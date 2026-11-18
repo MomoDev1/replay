@@ -40,6 +40,8 @@ type Props = {
   /** Search match highlight colour (#RRGGBB). */
   match: string;
   fontSize?: number;
+  /** CSS padding around the terminal grid. */
+  padding?: string;
   onReady: () => Promise<void>;
   /** base64-encoded keystrokes */
   onInput: (b64: string) => Promise<void>;
@@ -82,12 +84,13 @@ const mix = (a: string, b: string, t: number) =>
 
 const handleStyle = { display: 'none', position: 'absolute', width: HANDLE_SIZE, height: HANDLE_SIZE, pointerEvents: 'none', zIndex: 10 } as const;
 
-export default function XTerm({ ref, background, foreground, cursor, accent, match, fontSize = 12, onReady, onInput, onResize, onCtrlConsumed, onSelectModeChange, onSelection, onSearchResults }: Props) {
+export default function XTerm({ ref, background, foreground, cursor, accent, match, fontSize = 12, padding = '8px', onReady, onInput, onResize, onCtrlConsumed, onSelectModeChange, onSelection, onSearchResults }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const startHandle = useRef<HTMLDivElement>(null);
   const endHandle = useRef<HTMLDivElement>(null);
   const term = useRef<Terminal | null>(null);
   const search = useRef<SearchAddon | null>(null);
+  const fitter = useRef<FitAddon | null>(null);
   const ctrl = useRef(false);
   const selecting = useRef(false);
   const lastQuery = useRef('');
@@ -192,6 +195,7 @@ export default function XTerm({ ref, background, foreground, cursor, accent, mat
     t.open(host.current!);
     term.current = t;
     search.current = finder;
+    fitter.current = fit;
 
     t.onData((data) => {
       // iOS smart punctuation also applies to the WebView's input: a typed ' or " arrives curly and the
@@ -510,13 +514,22 @@ export default function XTerm({ ref, background, foreground, cursor, accent, mat
       t.dispose();
       term.current = null;
       search.current = null;
+      fitter.current = null;
     };
     // The terminal is created once; callbacks are stable native actions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Font size set in the settings while the terminal is open.
+  useEffect(() => {
+    const t = term.current;
+    if (!t || t.options.fontSize === fontSize) return;
+    t.options.fontSize = fontSize;
+    fitter.current?.fit();
+  }, [fontSize]);
+
   return (
-    <div style={{ position: 'fixed', inset: 0, padding: 8, background, boxSizing: 'border-box', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}>
+    <div style={{ position: 'fixed', inset: 0, padding, background, boxSizing: 'border-box', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}>
       <div ref={host} style={{ width: '100%', height: '100%' }} />
       {/* Teardrops pointing at the selection edges, like the system text-selection handles. */}
       <div ref={startHandle} style={{ ...handleStyle, background: accent, borderRadius: '50% 0 50% 50%' }} />

@@ -8,6 +8,8 @@ import { Button, Card, Dot, EnvBadge, Mono, s } from '@/components/ui';
 import type { Server, ServerStatus } from '@/lib/types';
 import { useServers } from '@/store/servers';
 import { C } from '@/theme';
+import { useTablet } from '@/hooks/use-tablet';
+import { TabletServers } from '@/tablet/servers';
 
 const statusColor: Record<ServerStatus, string> = { online: C.green, offline: C.red, unknown: C.dim };
 const statusLabel: Record<ServerStatus, string> = { online: 'Joignable', offline: 'Injoignable', unknown: 'Jamais connecté' };
@@ -23,7 +25,7 @@ function ago(ts: number | null) {
   return d === 1 ? 'Hier' : `Il y a ${d} jours`;
 }
 
-export default function ServersScreen() {
+function PhoneServers() {
   const { servers, deleteServer } = useServers();
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<'recent' | 'name'>('recent');
@@ -120,4 +122,9 @@ export default function ServersScreen() {
       />
     </SafeAreaView>
   );
+}
+
+export default function Screen() {
+  const { tablet } = useTablet();
+  return tablet ? <TabletServers /> : <PhoneServers />;
 }

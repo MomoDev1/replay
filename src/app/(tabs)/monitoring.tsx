@@ -3,34 +3,24 @@ import * as Haptics from 'expo-haptics';
 import { router, useIsFocused } from 'expo-router';
 import { Activity, Check, ChevronRight, Copy, ListChecks, Pause, Play, Share2, Sparkles, TextSelect, X } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, AppState, FlatList, Pressable, Share, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, Share, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Dot, Mono, s } from '@/components/ui';
-import { bytes, cpuUsage, duration, levelOf, logsAsMarkdown, readLogs, sample, sourceLabel, type Cursor, type Level, type LogLine, type LogSource, type Stats } from '@/lib/monitor';
+import { bytes, duration, logsAsMarkdown, sourceLabel, type Level } from '@/lib/monitor';
 import type { Server } from '@/lib/types';
+import { HISTORY, useAppActive, useLogs, useStats } from '@/hooks/use-monitor';
 import { useLogSource } from '@/store/monitor';
 import { useSession } from '@/store/session';
 import { C } from '@/theme';
+import { useTablet } from '@/hooks/use-tablet';
+import { TabletMonitor } from '@/tablet/monitor';
 
-const STATS_MS = 3000;
-const LOGS_MS = 2500;
-const HISTORY = 30;
-const MAX_LINES = 1000;
 
 const lvlColor: Record<Level, string> = { INFO: C.muted, WARN: C.orange, ERROR: C.red, DEBUG: C.dim };
 type Filter = 'all' | 'WARN' | 'ERROR';
 
 const level = (pct: number) => (pct >= 90 ? C.red : pct >= 75 ? C.orange : C.green);
-
-function useAppActive() {
-  const [active, setActive] = useState(AppState.currentState === 'active');
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (st) => setActive(st === 'active'));
-    return () => sub.remove();
-  }, []);
-  return active;
-}
 
 function Bars({ data }: { data: number[] }) {
   const pad = Array.from({ length: HISTORY - data.length }, () => 0);
@@ -76,92 +66,6 @@ function BarAction({ label, icon, onPress, disabled, primary }: { label: string;
       </Text>
     </Pressable>
   );
-}
-
-/** Polls the server's metrics every few seconds while `active`. */
-function useStats(active: boolean) {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [cpu, setCpu] = useState<number[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const prev = useRef<Stats | null>(null);
-
-  useEffect(() => {
-    if (!active) return;
-    let stop = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const tick = async () => {
-      try {
-        const st = await sample(!prev.current);
-        if (stop) return;
-        const pct = st.cpuPct ?? (prev.current ? cpuUsage(prev.current.cpuTimes, st.cpuTimes) : null);
-        prev.current = st;
-        setStats(st);
-        setError(null);
-        if (pct != null) setCpu((c) => [...c, pct].slice(-HISTORY));
-      } catch (e) {
-        if (!stop) setError((e as Error).message);
-      }
-      if (!stop) timer = setTimeout(tick, STATS_MS);
-    };
-    tick();
-    return () => {
-      stop = true;
-      clearTimeout(timer);
-    };
-  }, [active]);
-
-  return { stats, cpu, error };
-}
-
-/** Follows the log source: only appended lines are fetched, a new source starts over. */
-function useLogs(src: LogSource, active: boolean) {
-  const srcKey = JSON.stringify(src);
-  const [lines, setLines] = useState<LogLine[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const cursor = useRef<Cursor>(null);
-  const loadedKey = useRef<string | null>(null);
-  const nextId = useRef(0);
-
-  useEffect(() => {
-    if (loadedKey.current !== srcKey) {
-      loadedKey.current = srcKey;
-      cursor.current = null;
-      setLines([]);
-      setError(null);
-      setHint(null);
-      setLoading(true);
-    }
-    if (!active) return;
-    const source = JSON.parse(srcKey) as LogSource;
-    let stop = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const tick = async () => {
-      try {
-        const r = await readLogs(source, cursor.current);
-        if (stop) return;
-        cursor.current = r.cursor;
-        const fresh = r.lines.map((text) => ({ id: nextId.current++, text, lvl: levelOf(text) }));
-        if (r.reset) setLines(fresh.slice(-MAX_LINES));
-        else if (fresh.length) setLines((l) => [...l, ...fresh].slice(-MAX_LINES));
-        if (r.hint !== undefined && r.reset) setHint(r.hint ?? null);
-        setError(null);
-      } catch (e) {
-        if (!stop) setError((e as Error).message);
-      }
-      if (stop) return;
-      setLoading(false);
-      timer = setTimeout(tick, LOGS_MS);
-    };
-    tick();
-    return () => {
-      stop = true;
-      clearTimeout(timer);
-    };
-  }, [srcKey, active]);
-
-  return { lines, error, hint, loading };
 }
 
 function Dashboard({ server }: { server: Server }) {
@@ -458,7 +362,7 @@ function Dashboard({ server }: { server: Server }) {
   );
 }
 
-export default function Monitoring() {
+function PhoneMonitoring() {
   const session = useSession();
   const server = session?.server;
 
@@ -477,4 +381,9 @@ export default function Monitoring() {
 
   // Keyed by session: a new connection starts with fresh history and log cursor.
   return <Dashboard key={session.id} server={server} />;
+}
+
+export default function Screen() {
+  const { tablet } = useTablet();
+  return tablet ? <TabletMonitor /> : <PhoneMonitoring />;
 }

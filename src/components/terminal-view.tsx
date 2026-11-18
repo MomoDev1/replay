@@ -7,9 +7,14 @@ import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Dot, EnvBadge, Mono, s } from '@/components/ui';
+import { useTablet } from '@/hooks/use-tablet';
+import { termFont, usePrefs } from '@/store/prefs';
+import { TabletKeyBar, TabletTerminalShell } from '@/tablet/terminal';
 import XTerm, { type XTermRef } from '@/components/xterm';
 import { closeSession, pasteText, resizeSession, sendB64, sendText, setPasteHandler, subscribeData, useSession } from '@/store/session';
 import { C, mono } from '@/theme';
+
+const TERM_BG = '#08090B';
 
 const KEYS: [string, string][] = [
   ['Ctrl', ''],
@@ -46,6 +51,9 @@ export function TerminalView() {
   const term = useRef<XTermRef>(null);
   const unsub = useRef<(() => void) | null>(null);
   const [ctrl, setCtrl] = useState(false);
+  const [alt, setAlt] = useState(false);
+  const { tablet } = useTablet();
+  const fontSize = termFont(usePrefs(), tablet);
   const [selecting, setSelecting] = useState(false);
   const [selection, setSelection] = useState('');
   const [copied, setCopied] = useState(false);
@@ -96,8 +104,22 @@ export function TerminalView() {
       term.current?.setCtrl(!ctrl);
       return;
     }
-    sendText(seq);
+    if (label === 'Alt') {
+      setAlt((a) => !a);
+      return;
+    }
+    // Alt (Meta) is sent as ESC before the key, like terminals do with "Option as Meta".
+    sendText(alt ? '\x1b' + seq : seq);
+    setAlt(false);
     term.current?.focus();
+  }
+
+  function input(b64: string) {
+    if (alt) {
+      sendText('\x1b');
+      setAlt(false);
+    }
+    sendB64(b64);
   }
 
   function startSelect() {
@@ -146,6 +168,8 @@ export function TerminalView() {
     term.current?.find(q, backwards, cs);
   }
 
+  if (!session && tablet) return <TabletTerminalShell session={null} />;
+
   if (!session) {
     return (
       <SafeAreaView style={[s.screen, { justifyContent: 'center', padding: 24 }]}>
@@ -160,6 +184,137 @@ export function TerminalView() {
   }
 
   const { server } = session;
+
+  const xterm = (
+    <View style={{ flex: 1 }}>
+      <XTerm
+        ref={term}
+        background={tablet ? TERM_BG : C.bg}
+        foreground={C.text}
+        cursor={C.green}
+        accent={C.accent}
+        fontSize={fontSize}
+        padding={tablet ? '14px 18px' : '8px'}
+        match={C.orange}
+        // iOS: no prev/next/done bar above the keyboard, the key bar below replaces it
+        dom={{ style: { flex: 1, backgroundColor: tablet ? TERM_BG : C.bg }, scrollEnabled: false, hideKeyboardAccessoryView: true }}
+        onReady={async () => attach(latest.current!)}
+        onInput={async (b64) => input(b64)}
+        onResize={async (cols, rows) => resizeSession(cols, rows)}
+        onCtrlConsumed={async () => setCtrl(false)}
+        onSelectModeChange={async (on) => {
+          if (on) {
+            Haptics.selectionAsync().catch(() => {});
+            closeSearch(false);
+          }
+          setSelecting(on);
+        }}
+        onSelection={async (text) => setSelection(text)}
+        onSearchResults={async (index, count) => setResults({ index, count })}
+      />
+    </View>
+  );
+
+  const bars = (
+    searching ? (
+      <View style={[s.row, { gap: 6, padding: 8, backgroundColor: C.surface }]}>
+        <View style={[s.row, { flex: 1, gap: 6, backgroundColor: C.surface2, borderRadius: 6, paddingHorizontal: 8 }]}>
+          <Search size={14} color={C.muted} />
+          <TextInput
+            value={query}
+            onChangeText={(q) => {
+              setQuery(q);
+              find(q);
+            }}
+            onSubmitEditing={() => find(query)}
+            submitBehavior="submit"
+            returnKeyType="search"
+            autoFocus
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="Rechercher dans le terminal"
+            placeholderTextColor={C.dim}
+            style={{ flex: 1, color: C.text, fontFamily: mono, fontSize: 13, paddingVertical: 7 }}
+          />
+          {!!query && (
+            <Text style={{ color: results.count ? C.muted : C.red, fontSize: 11 }}>
+              {results.count ? `${results.index >= 0 ? results.index + 1 : '?'}/${results.count}` : '0'}
+            </Text>
+          )}
+        </View>
+        <BarButton
+          label="Respecter la casse"
+          active={caseSensitive}
+          onPress={() => {
+            const cs = !caseSensitive;
+            setCaseSensitive(cs);
+            if (query) find(query, false, cs);
+          }}>
+          <CaseSensitive size={16} color={C.text} />
+        </BarButton>
+        <BarButton label="Résultat précédent" disabled={!query} onPress={() => find(query, true)}>
+          <ChevronUp size={16} color={C.text} />
+        </BarButton>
+        <BarButton label="Résultat suivant" disabled={!query} onPress={() => find(query)}>
+          <ChevronDown size={16} color={C.text} />
+        </BarButton>
+        <BarButton label="Fermer la recherche" onPress={() => closeSearch()}>
+          <X size={16} color={C.text} />
+        </BarButton>
+      </View>
+    ) : selecting ? (
+      <View style={[s.row, { gap: 6, padding: 8, backgroundColor: C.surface }]}>
+        <Text style={{ flex: 1, color: C.muted, fontSize: 11 }} numberOfLines={2}>
+          {selection ? `${selection.length} caractère${selection.length > 1 ? 's' : ''} · glisse les poignées pour ajuster` : 'Touche un mot ou glisse pour sélectionner · 2 doigts pour défiler'}
+        </Text>
+        <BarButton label="Tout sélectionner" onPress={() => term.current?.selectAll()}>
+          <Text style={{ color: C.text, fontSize: 12 }}>Tout</Text>
+        </BarButton>
+        <BarButton label="Copier" active={!!selection} disabled={!selection} onPress={copy}>
+          <Copy size={14} color={C.text} />
+          <Text style={{ color: C.text, fontSize: 12, fontWeight: '600' }}>Copier</Text>
+        </BarButton>
+        <BarButton label="Terminer la sélection" onPress={stopSelect}>
+          <X size={16} color={C.text} />
+        </BarButton>
+      </View>
+    ) : tablet ? (
+      <TabletKeyBar open={session.open} ctrl={ctrl} alt={alt} copied={copied} onKey={key} onSearch={openSearch} onSelect={startSelect} onPaste={pasteClipboard} />
+    ) : (
+      <ScrollView horizontal keyboardShouldPersistTaps="always" contentContainerStyle={{ gap: 6, padding: 8 }} style={{ flexGrow: 0, backgroundColor: C.surface }}>
+        <BarButton label="Rechercher" onPress={openSearch}>
+          <Search size={15} color={C.text} />
+        </BarButton>
+        <BarButton label="Sélectionner du texte" onPress={startSelect}>
+          <TextSelect size={15} color={copied ? C.green : C.text} />
+        </BarButton>
+        <BarButton label="Coller" disabled={!session.open} onPress={pasteClipboard}>
+          <ClipboardPaste size={15} color={C.text} />
+        </BarButton>
+        <View style={{ width: 1, backgroundColor: C.border, marginHorizontal: 2 }} />
+        {KEYS.map(([label, seq]) => {
+          const on = label === 'Ctrl' && ctrl;
+          return (
+            <Pressable key={label} disabled={!session.open} onPress={() => key(label, seq)} style={{ minWidth: 38, alignItems: 'center', paddingHorizontal: 8, paddingVertical: 7, borderRadius: 6, backgroundColor: on ? C.accent : C.surface2, opacity: session.open ? 1 : 0.4 }}>
+              {label === '^C' ? <Mono style={{ fontSize: 12, color: C.red }}>{label}</Mono> : <Text style={{ color: C.text, fontSize: 12 }}>{label}</Text>}
+            </Pressable>
+  );
+        })}
+      </ScrollView>
+    )
+  );
+
+  if (tablet) {
+    return (
+      <TabletTerminalShell session={session}>
+        {/* Android is edge-to-edge: the window no longer resizes for the keyboard, so pad on both platforms */}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+          {xterm}
+          {bars}
+        </KeyboardAvoidingView>
+      </TabletTerminalShell>
+    );
+  }
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
@@ -203,116 +358,8 @@ export function TerminalView() {
 
       {/* Android is edge-to-edge: the window no longer resizes for the keyboard, so pad on both platforms */}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        <View style={{ flex: 1 }}>
-          <XTerm
-            ref={term}
-            background={C.bg}
-            foreground={C.text}
-            cursor={C.green}
-            accent={C.accent}
-            match={C.orange}
-            // iOS: no prev/next/done bar above the keyboard, the key bar below replaces it
-            dom={{ style: { flex: 1, backgroundColor: C.bg }, scrollEnabled: false, hideKeyboardAccessoryView: true }}
-            onReady={async () => attach(latest.current!)}
-            onInput={async (b64) => sendB64(b64)}
-            onResize={async (cols, rows) => resizeSession(cols, rows)}
-            onCtrlConsumed={async () => setCtrl(false)}
-            onSelectModeChange={async (on) => {
-              if (on) {
-                Haptics.selectionAsync().catch(() => {});
-                closeSearch(false);
-              }
-              setSelecting(on);
-            }}
-            onSelection={async (text) => setSelection(text)}
-            onSearchResults={async (index, count) => setResults({ index, count })}
-          />
-        </View>
-
-        {searching ? (
-          <View style={[s.row, { gap: 6, padding: 8, backgroundColor: C.surface }]}>
-            <View style={[s.row, { flex: 1, gap: 6, backgroundColor: C.surface2, borderRadius: 6, paddingHorizontal: 8 }]}>
-              <Search size={14} color={C.muted} />
-              <TextInput
-                value={query}
-                onChangeText={(q) => {
-                  setQuery(q);
-                  find(q);
-                }}
-                onSubmitEditing={() => find(query)}
-                submitBehavior="submit"
-                returnKeyType="search"
-                autoFocus
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder="Rechercher dans le terminal"
-                placeholderTextColor={C.dim}
-                style={{ flex: 1, color: C.text, fontFamily: mono, fontSize: 13, paddingVertical: 7 }}
-              />
-              {!!query && (
-                <Text style={{ color: results.count ? C.muted : C.red, fontSize: 11 }}>
-                  {results.count ? `${results.index >= 0 ? results.index + 1 : '?'}/${results.count}` : '0'}
-                </Text>
-              )}
-            </View>
-            <BarButton
-              label="Respecter la casse"
-              active={caseSensitive}
-              onPress={() => {
-                const cs = !caseSensitive;
-                setCaseSensitive(cs);
-                if (query) find(query, false, cs);
-              }}>
-              <CaseSensitive size={16} color={C.text} />
-            </BarButton>
-            <BarButton label="Résultat précédent" disabled={!query} onPress={() => find(query, true)}>
-              <ChevronUp size={16} color={C.text} />
-            </BarButton>
-            <BarButton label="Résultat suivant" disabled={!query} onPress={() => find(query)}>
-              <ChevronDown size={16} color={C.text} />
-            </BarButton>
-            <BarButton label="Fermer la recherche" onPress={() => closeSearch()}>
-              <X size={16} color={C.text} />
-            </BarButton>
-          </View>
-        ) : selecting ? (
-          <View style={[s.row, { gap: 6, padding: 8, backgroundColor: C.surface }]}>
-            <Text style={{ flex: 1, color: C.muted, fontSize: 11 }} numberOfLines={2}>
-              {selection ? `${selection.length} caractère${selection.length > 1 ? 's' : ''} · glisse les poignées pour ajuster` : 'Touche un mot ou glisse pour sélectionner · 2 doigts pour défiler'}
-            </Text>
-            <BarButton label="Tout sélectionner" onPress={() => term.current?.selectAll()}>
-              <Text style={{ color: C.text, fontSize: 12 }}>Tout</Text>
-            </BarButton>
-            <BarButton label="Copier" active={!!selection} disabled={!selection} onPress={copy}>
-              <Copy size={14} color={C.text} />
-              <Text style={{ color: C.text, fontSize: 12, fontWeight: '600' }}>Copier</Text>
-            </BarButton>
-            <BarButton label="Terminer la sélection" onPress={stopSelect}>
-              <X size={16} color={C.text} />
-            </BarButton>
-          </View>
-        ) : (
-          <ScrollView horizontal keyboardShouldPersistTaps="always" contentContainerStyle={{ gap: 6, padding: 8 }} style={{ flexGrow: 0, backgroundColor: C.surface }}>
-            <BarButton label="Rechercher" onPress={openSearch}>
-              <Search size={15} color={C.text} />
-            </BarButton>
-            <BarButton label="Sélectionner du texte" onPress={startSelect}>
-              <TextSelect size={15} color={copied ? C.green : C.text} />
-            </BarButton>
-            <BarButton label="Coller" disabled={!session.open} onPress={pasteClipboard}>
-              <ClipboardPaste size={15} color={C.text} />
-            </BarButton>
-            <View style={{ width: 1, backgroundColor: C.border, marginHorizontal: 2 }} />
-            {KEYS.map(([label, seq]) => {
-              const on = label === 'Ctrl' && ctrl;
-              return (
-                <Pressable key={label} disabled={!session.open} onPress={() => key(label, seq)} style={{ minWidth: 38, alignItems: 'center', paddingHorizontal: 8, paddingVertical: 7, borderRadius: 6, backgroundColor: on ? C.accent : C.surface2, opacity: session.open ? 1 : 0.4 }}>
-                  {label === '^C' ? <Mono style={{ fontSize: 12, color: C.red }}>{label}</Mono> : <Text style={{ color: C.text, fontSize: 12 }}>{label}</Text>}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
+        {xterm}
+        {bars}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

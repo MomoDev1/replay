@@ -11,6 +11,8 @@ import { ago, discardAll, git, isStaged, isUnstaged, stage, unstage, type GitFil
 import { act, refresh, selectServer, useGit } from '@/store/git';
 import { useSession } from '@/store/session';
 import { C } from '@/theme';
+import { useTablet } from '@/hooks/use-tablet';
+import { TabletGit } from '@/tablet/git';
 
 function Action({ icon, label, primary, busy, onPress }: { icon: ReactNode; label: string; primary?: boolean; busy?: boolean; onPress: () => void }) {
   return (
@@ -47,7 +49,7 @@ function FileRow({ f, staged, first }: { f: GitFile; staged: boolean; first: boo
   );
 }
 
-export default function GitScreen() {
+function PhoneGit() {
   const session = useSession();
   const server = session?.server;
   const g = useGit();
@@ -257,4 +259,9 @@ export default function GitScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+export default function Screen() {
+  const { tablet } = useTablet();
+  return tablet ? <TabletGit /> : <PhoneGit />;
 }
