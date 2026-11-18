@@ -275,3 +275,21 @@ export function duration(sec: number) {
   if (h) return `${h} h ${m} min`;
   return `${m} min`;
 }
+
+export type Service = { name: string; active: string; sub: string };
+
+/**
+ * systemd services worth watching: failed or (re)starting ones first, then running ones.
+ * Empty on servers without systemd.
+ */
+export async function serviceStates(limit = 6): Promise<Service[]> {
+  const r = await exec('systemctl list-units --type=service --all --no-legend --plain --no-pager 2>/dev/null | head -n 300; exit 0', 10_000);
+  const all = r.stdout
+    .split('\n')
+    .map((l) => l.trim().split(/\s+/))
+    .filter((p) => p[0]?.endsWith('.service') && p.length >= 4)
+    .map(([unit, , active, sub]) => ({ name: unit.replace(/\.service$/, ''), active, sub }))
+    .filter((s) => s.active !== 'inactive');
+  const rank = (s: Service) => (s.active === 'failed' ? 0 : s.active === 'activating' || s.active === 'deactivating' || s.sub === 'auto-restart' ? 1 : 2);
+  return all.sort((a, b) => rank(a) - rank(b)).slice(0, limit);
+}

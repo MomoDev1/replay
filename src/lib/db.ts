@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import type { Server, Snippet, SshKey } from '@/lib/types';
 
 export const DB_NAME = 'relay.db';
-const VERSION = 2;
+const VERSION = 3;
 
 const SEED_SNIPPETS: [string, string][] = [
   ['Redémarrer un service', 'sudo systemctl restart {service:api|worker|nginx|redis}'],
@@ -69,6 +69,25 @@ export async function migrate(db: SQLiteDatabase) {
     for (const [i, [title, cmd]] of SEED_SNIPPETS.entries()) {
       await db.runAsync('INSERT INTO snippets (id, server_id, title, cmd, fav, created_at) VALUES (?, NULL, ?, ?, ?, ?)', `seed-${i}`, title, cmd, i === 4 ? 0 : 1, now + i);
     }
+  }
+  if (v < 3) {
+    await db.execAsync(`
+      CREATE TABLE deploys (
+        id TEXT PRIMARY KEY NOT NULL,
+        server_id TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'deploy',
+        status TEXT NOT NULL,
+        version TEXT NOT NULL,
+        commit_sha TEXT NOT NULL,
+        prev_version TEXT,
+        prev_commit TEXT,
+        failed_step TEXT,
+        error TEXT,
+        started_at INTEGER NOT NULL,
+        duration_ms INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX deploys_server ON deploys (server_id, started_at DESC);
+    `);
   }
   await db.execAsync(`PRAGMA user_version = ${VERSION}`);
 }
@@ -151,3 +170,5 @@ export const toSnippet = (r: SnippetRow): Snippet => ({
 });
 
 export const listSnippets = async (db: SQLiteDatabase) => (await db.getAllAsync<SnippetRow>('SELECT * FROM snippets ORDER BY created_at')).map(toSnippet);
+
+export const listKnownHosts = (db: SQLiteDatabase) => db.getAllAsync<{ host: string; port: number; fingerprint: string }>('SELECT host, port, fingerprint FROM known_hosts ORDER BY host, port');
