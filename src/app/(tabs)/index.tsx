@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Dot, EnvBadge, Mono, s } from '@/components/ui';
 import type { Server, ServerStatus } from '@/lib/types';
+import { openServer } from '@/store/session';
 import { useServers } from '@/store/servers';
 import { C } from '@/theme';
 import { useTablet } from '@/hooks/use-tablet';
@@ -100,7 +101,7 @@ function PhoneServers() {
           )
         }
         renderItem={({ item }) => (
-          <Pressable onPress={() => router.push(`/connect/${item.id}`)} onLongPress={() => actions(item)}>
+          <Pressable onPress={() => openServer(item.id)} onLongPress={() => actions(item)}>
             <Card>
               <View style={[s.row, { gap: 8 }]}>
                 <Dot color={statusColor[item.status]} />

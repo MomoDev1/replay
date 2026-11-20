@@ -11,7 +11,7 @@ import { history, useHistoryVersion, type DeployRecord } from '@/store/deploy';
 import { repoFor, useGit } from '@/store/git';
 import { logSourceFor } from '@/store/monitor';
 import { useServers } from '@/store/servers';
-import { exec, useSession } from '@/store/session';
+import { exec, openServer, useSession } from '@/store/session';
 import { alpha, sans, T } from '@/tablet/theme';
 import { Btn, card, Dot, Empty, EnvTag, Grid, Label, ListRow, Meter, PlusButton, st, TabletScreen, Tx, vline } from '@/tablet/ui';
 
@@ -162,7 +162,7 @@ function Detail({ server }: { server: Server }) {
       .catch(() => {});
   }, [connected, server.id]);
 
-  const go = (tab: '/terminal' | '/git' | '/deploy' | '/monitoring') => (connected ? router.navigate(tab) : router.push(`/connect/${server.id}`));
+  const go = (tab: '/terminal' | '/git' | '/deploy' | '/monitoring') => (connected ? router.navigate(tab) : openServer(server.id, tab));
 
   const memPct = stats?.mem.total ? ((stats.mem.total - stats.mem.available) / stats.mem.total) * 100 : null;
   const diskPct = stats?.disk?.size ? (stats.disk.used / stats.disk.size) * 100 : null;

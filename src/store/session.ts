@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import Storage from 'expo-sqlite/kv-store';
 import RelaySsh from 'relay-ssh';
 import { useSyncExternalStore } from 'react';
@@ -147,6 +148,17 @@ export function setActiveTab(id: string) {
   const tab = find(id);
   if (!tab) return;
   setState({ activeId: id, ...(tab.kind === 'ssh' ? { sshId: id } : null) });
+}
+
+/**
+ * Makes a server's open SSH tab the current session and shows `screen`; without one, connects to the
+ * server in a new tab (the connect screen then lands on the terminal).
+ */
+export function openServer(serverId: string, screen: '/terminal' | '/git' | '/deploy' | '/monitoring' = '/terminal') {
+  const tab = state.tabs.find((t) => t.kind === 'ssh' && t.open && t.server.id === serverId);
+  if (!tab) return router.push(`/connect/${serverId}`);
+  setActiveTab(tab.id);
+  router.navigate(screen);
 }
 
 /** Ends a tab's shell but keeps the tab (with its output) until it is closed. */
