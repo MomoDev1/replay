@@ -5,7 +5,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 
 import { parseVars, plainCmd, resolveCmd, runSnippet } from '@/components/snippet-row';
 import type { Snippet } from '@/lib/types';
-import { closeSession, pasteText, type Session } from '@/store/session';
+import { closeSession, openLocalSession, pasteText, removeTab, setActiveTab, type Session, type Terminal } from '@/store/session';
 import { getHistory, pushHistory, useServerSnippets, useSnippets } from '@/store/snippets';
 import { T } from '@/tablet/theme';
 import { Btn, card, Dot, Empty, EnvTag, Label, PlayButton, Seg, st, TabletScreen, Tx } from '@/tablet/ui';
@@ -66,48 +66,85 @@ export function TabletKeyBar({ open, ctrl, alt, copied, onKey, onSearch, onSelec
   );
 }
 
-/** Rail-side layout of the terminal: session tab bar + terminal on the left, favourites panel on the right. */
-export function TabletTerminalShell({ session, children }: { session: Session | null; children?: ReactNode }) {
-  const server = session?.server;
+/** One session tab (SSH or local) in the tablet tab bar. */
+function TabChip({ t, active }: { t: Terminal; active: boolean }) {
+  return (
+    <Pressable
+      role="tab"
+      aria-selected={active}
+      accessibilityLabel={t.kind === 'local' ? t.title : t.server.name}
+      onPress={() => setActiveTab(t.id)}
+      style={[st.row, { height: 38, paddingLeft: 14, paddingRight: 8, borderRadius: 10, gap: 8, maxWidth: 240, backgroundColor: active ? T.field : 'transparent', borderWidth: 1, borderColor: active ? T.line : 'transparent' }]}>
+      <Dot color={t.open ? T.green : T.faint} size={7} />
+      <Tx mono style={{ fontSize: 13, color: active ? T.text : T.muted, flexShrink: 1 }} numberOfLines={1}>
+        {t.kind === 'local' ? t.title : t.server.name}
+      </Tx>
+      {t.kind === 'ssh' ? <EnvTag env={t.server.env} size="sm" short /> : <Tx style={{ fontSize: 11, color: T.dim }}>local</Tx>}
+      <Pressable onPress={() => removeTab(t.id)} hitSlop={8} accessibilityLabel="Fermer l’onglet" style={{ width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center' }}>
+        <Tx style={{ fontSize: 16, lineHeight: 18, color: T.dim }}>×</Tx>
+      </Pressable>
+    </Pressable>
+  );
+}
+
+/**
+ * Rail-side layout of the terminal: session tab bar + terminal on the left, favourites panel on the right.
+ * `active` is the tab shown (SSH or local); `ssh` is the SSH session the favourites paste into.
+ */
+export function TabletTerminalShell({ tabs, active, ssh, children }: { tabs: Terminal[]; active: Terminal | null; ssh: Session | null; children?: ReactNode }) {
   return (
     <TabletScreen>
       <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 400, minWidth: 0 }}>
-        <View style={[st.row, { height: 56, gap: 8, paddingHorizontal: 16, borderBottomWidth: 1, borderColor: T.line }]}>
-          {server && (
-            <View style={[st.row, { height: 38, paddingLeft: 14, paddingRight: 8, borderRadius: 10, gap: 8, backgroundColor: T.field }]}>
-              <Dot color={session.open ? T.green : T.faint} size={7} />
-              <Tx mono style={{ fontSize: 13 }} numberOfLines={1}>
-                {server.name}
-              </Tx>
-              <EnvTag env={server.env} size="sm" short />
-              {session.open && (
-                <Pressable onPress={() => closeSession()} hitSlop={8} accessibilityLabel="Fermer la session" style={{ width: 22, height: 22, borderRadius: 6, alignItems: 'center', justifyContent: 'center' }}>
-                  <Tx style={{ fontSize: 16, lineHeight: 18, color: T.dim }}>×</Tx>
-                </Pressable>
-              )}
-            </View>
-          )}
-          <Pressable onPress={() => router.navigate('/')} accessibilityLabel="Ouvrir une autre session" style={({ pressed }) => ({ width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? T.field : 'transparent' })}>
+        <View style={[st.row, { height: 56, gap: 8, paddingLeft: 16, paddingRight: 12, borderBottomWidth: 1, borderColor: T.line }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 1 }} contentContainerStyle={{ gap: 6, alignItems: 'center' }}>
+            {tabs.map((t) => (
+              <TabChip key={t.id} t={t} active={t.id === active?.id} />
+            ))}
+          </ScrollView>
+          <Pressable onPress={() => router.navigate('/')} accessibilityLabel="Nouvelle session SSH" style={({ pressed }) => ({ width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: pressed ? T.field : 'transparent' })}>
             <Tx style={{ fontSize: 20, color: T.dim }}>+</Tx>
           </Pressable>
+          <Pressable onPress={() => openLocalSession()} accessibilityLabel="Nouveau terminal local" style={({ pressed }) => [st.row, { height: 34, paddingHorizontal: 10, borderRadius: 10, gap: 6, backgroundColor: pressed ? T.segOn : T.chip }]}>
+            <Tx mono style={{ fontSize: 13, color: T.text }}>{'>_'}</Tx>
+            <Tx w={600} style={{ fontSize: 12.5, color: T.text }}>
+              Local
+            </Tx>
+          </Pressable>
           <View style={{ flex: 1 }} />
-          {session?.open && <Tx style={{ fontSize: 12, color: T.green }}>● {session.latencyMs} ms</Tx>}
-          {session && !session.open && (
+          {active?.open && active.kind === 'ssh' && <Tx style={{ fontSize: 12, color: T.green }}>● {active.latencyMs} ms</Tx>}
+          {active?.open && active.kind === 'local' && <Tx style={{ fontSize: 12, color: T.green }}>● cet appareil</Tx>}
+          {active?.open && (
+            <Btn title="Quitter" height={34} radius={10} kind="danger" onPress={() => closeSession(active.kind === 'ssh' ? 'Déconnecté' : 'Session locale terminée', active.id)} />
+          )}
+          {active && !active.open && (
             <>
               <Tx style={{ fontSize: 12, color: T.muted, flexShrink: 1 }} numberOfLines={1}>
-                {session.closedReason ?? 'Déconnecté'}
+                {active.closedReason ?? 'Déconnecté'}
               </Tx>
-              <Btn title="Reconnecter" height={34} radius={10} onPress={() => router.push(`/connect/${session.server.id}`)} />
+              {active.kind === 'ssh' ? (
+                <Btn title="Reconnecter" height={34} radius={10} onPress={() => router.push(`/connect/${active.server.id}`)} />
+              ) : (
+                <Btn title="Relancer" height={34} radius={10} onPress={() => openLocalSession(active.id)} />
+              )}
             </>
           )}
         </View>
-        {session ? (
+        {active ? (
           <View style={{ flex: 1, backgroundColor: T.term }}>{children}</View>
         ) : (
-          <Empty title="Aucune session" text="Connecte-toi à un serveur pour ouvrir un terminal." action={<Btn title="Choisir un serveur" style={{ marginTop: 8 }} onPress={() => router.navigate('/')} />} />
+          <Empty
+            title="Aucune session"
+            text="Connecte-toi à un serveur, ou ouvre un terminal sur cet appareil."
+            action={
+              <View style={[st.row, { gap: 8, marginTop: 8 }]}>
+                <Btn title="Choisir un serveur" onPress={() => router.navigate('/')} />
+                <Btn title="Terminal local" kind="ghost" onPress={() => openLocalSession()} />
+              </View>
+            }
+          />
         )}
       </View>
-      <SidePanel session={session} />
+      <SidePanel session={ssh} />
     </TabletScreen>
   );
 }

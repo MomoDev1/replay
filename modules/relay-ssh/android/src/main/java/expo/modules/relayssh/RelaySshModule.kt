@@ -100,6 +100,7 @@ private fun mapError(e: Throwable, host: String, port: Int): SshError = when (e)
 
 class RelaySshModule : Module() {
   private val conns = ConcurrentHashMap<String, Conn>()
+  private val local = ConcurrentHashMap<String, Process>()
 
   private fun conn(id: String) = conns[id] ?: throw SshError("NO_SESSION", "Session inconnue : $id")
 
@@ -124,6 +125,8 @@ class RelaySshModule : Module() {
 
     OnDestroy {
       conns.keys.toList().forEach { close(it, null) }
+      local.values.forEach { runCatching { it.destroyForcibly() } }
+      local.clear()
     }
 
     // Opens the transport and returns the host key fingerprint. Credentials are only sent by `authenticate`,
@@ -254,6 +257,51 @@ class RelaySshModule : Module() {
           )
         }
       }
+    }
+
+    // Local terminal: runs a command line with the device's /system/bin/sh in `cwd` (no PTY, stdin closed).
+    AsyncFunction("localExec") Coroutine { token: String, command: String, cwd: String, timeoutMs: Int? ->
+      withContext(Dispatchers.IO) {
+        val home = appContext.reactContext?.filesDir
+        val pb = ProcessBuilder("/system/bin/sh", "-c", command)
+          .directory(java.io.File(cwd).takeIf { it.isDirectory } ?: home)
+        pb.environment()["TERM"] = "dumb"
+        home?.let { pb.environment()["HOME"] = it.absolutePath }
+        val proc = try {
+          pb.start()
+        } catch (e: Exception) {
+          throw SshError("SSH", e.message ?: "Impossible de lancer sh", e)
+        }
+        // No PTY and no input: closing stdin makes commands that read it see EOF instead of hanging.
+        runCatching { proc.outputStream.close() }
+        local[token] = proc
+        try {
+          var out = ByteArray(0)
+          var err = ByteArray(0)
+          val readers = listOf(
+            Thread { runCatching { out = readCapped(proc.inputStream) } },
+            Thread { runCatching { err = readCapped(proc.errorStream) } },
+          )
+          readers.forEach { it.isDaemon = true; it.start() }
+          if (!proc.waitFor((timeoutMs ?: 60_000).toLong(), TimeUnit.MILLISECONDS)) {
+            proc.destroyForcibly()
+            throw SshError("TIMEOUT", "Commande interrompue (délai dépassé)")
+          }
+          readers.forEach { it.join(2000) }
+          mapOf(
+            "stdout" to String(out, Charsets.UTF_8),
+            "stderr" to String(err, Charsets.UTF_8),
+            "exitCode" to proc.exitValue(),
+          )
+        } finally {
+          local.remove(token)
+        }
+      }
+    }
+
+    AsyncFunction("localKill") { token: String ->
+      local.remove(token)?.destroyForcibly()
+      Unit
     }
 
     AsyncFunction("disconnect") Coroutine { id: String ->

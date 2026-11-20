@@ -2,7 +2,7 @@ import type { BottomTabBarProps } from 'expo-router/tabs';
 import { Pressable, View } from 'react-native';
 import Svg, { Path, Polyline } from 'react-native-svg';
 
-import { useSession } from '@/store/session';
+import { useTerminals } from '@/store/session';
 import { alpha, T } from '@/tablet/theme';
 import { Dot, Tx } from '@/tablet/ui';
 
@@ -29,7 +29,7 @@ export function HopMark({ size = 30 }: { size?: number }) {
 
 /** 88 px navigation rail for tablets, used as the Tabs `tabBar` with `tabBarPosition: 'left'`. */
 export function Rail({ state, emitter, navigateToTab, insets }: BottomTabBarProps) {
-  const session = useSession();
+  const anyOpen = useTerminals().tabs.some((t) => t.open);
 
   const item = (routeKey: string, name: string, focused: boolean) => {
     const it = ITEMS[name];
@@ -52,7 +52,7 @@ export function Rail({ state, emitter, navigateToTab, insets }: BottomTabBarProp
         <Tx w={500} style={{ fontSize: 11, color }}>
           {it.t}
         </Tx>
-        {name === 'terminal' && session?.open && (
+        {name === 'terminal' && anyOpen && (
           <View style={{ position: 'absolute', top: 10, right: 16 }}>
             <Dot color={T.green} size={7} />
           </View>
