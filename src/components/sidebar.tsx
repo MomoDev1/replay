@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Dot, Mono } from '@/components/ui';
-import { useSession } from '@/store/session';
+import { setActiveTab, useSession, useTerminals } from '@/store/session';
 import { C } from '@/theme';
 
 type Props = BottomTabBarProps & { compact: boolean };
@@ -14,6 +14,8 @@ type Props = BottomTabBarProps & { compact: boolean };
 /** Left navigation for tablets, used as the Tabs `tabBar` with `tabBarPosition: 'left'`. */
 export function Sidebar({ state, descriptors, emitter, navigateToTab, insets, compact }: Props) {
   const session = useSession();
+  const { tabs } = useTerminals();
+  const anyOpen = tabs.some((t) => t.open);
 
   return (
     <View style={[st.root, compact && st.rootCompact, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 12, paddingLeft: insets.left + (compact ? 10 : 14) }]}>
@@ -43,7 +45,7 @@ export function Sidebar({ state, descriptors, emitter, navigateToTab, insets, co
           };
           return (
             <Item key={route.key} label={label} compact={compact} focused={focused} onPress={onPress} icon={options.tabBarIcon?.({ focused, color, size: 20 })}>
-              {route.name === 'terminal' && session?.open && <Dot color={C.green} size={7} />}
+              {route.name === 'terminal' && anyOpen && <Dot color={C.green} size={7} />}
             </Item>
           );
         })}
@@ -52,7 +54,12 @@ export function Sidebar({ state, descriptors, emitter, navigateToTab, insets, co
       <View style={{ flex: 1 }} />
 
       {session && !compact && (
-        <Pressable onPress={() => router.navigate('/terminal')} style={st.session}>
+        <Pressable
+          onPress={() => {
+            setActiveTab(session.id);
+            router.navigate('/terminal');
+          }}
+          style={st.session}>
           <View style={[st.row, { gap: 8 }]}>
             <Dot color={session.open ? C.green : C.dim} size={8} />
             <Text style={st.sessionTitle} numberOfLines={1}>{session.server.name}</Text>

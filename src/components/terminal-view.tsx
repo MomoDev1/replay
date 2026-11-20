@@ -1,14 +1,15 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { CaseSensitive, ChevronDown, ChevronLeft, ChevronUp, ClipboardPaste, Copy, Search, SquareTerminal, Star, TextSelect, X } from 'lucide-react-native';
+import { CaseSensitive, ChevronDown, ChevronLeft, ChevronUp, ClipboardPaste, Copy, Laptop, Plus, Search, Server, SquareTerminal, Star, TextSelect, X } from 'lucide-react-native';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Dot, EnvBadge, Mono, s } from '@/components/ui';
 import XTerm, { type XTermRef } from '@/components/xterm';
-import { closeSession, pasteText, resizeSession, sendB64, sendText, setPasteHandler, subscribeData, useSession } from '@/store/session';
+import { useTablet } from '@/hooks/use-tablet';
+import { closeSession, getActiveId, openLocalSession, pasteText, removeTab, resizeSession, sendB64, sendText, setActiveTab, setPasteHandler, subscribeData, useTerminals, type Terminal } from '@/store/session';
 import { C, mono } from '@/theme';
 
 const KEYS: [string, string][] = [
@@ -41,8 +42,52 @@ function BarButton({ onPress, disabled, active, children, label }: { onPress: ()
   );
 }
 
+/** Open terminals (SSH and local) as tabs, with buttons to open more. */
+function TerminalTabs({ tabs, activeId }: { tabs: Terminal[]; activeId: string | null }) {
+  return (
+    <View style={[s.row, { borderBottomWidth: 1, borderColor: C.border, backgroundColor: C.surface }]}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4, paddingHorizontal: 8, paddingVertical: 6 }} style={{ flex: 1 }}>
+        {tabs.map((t) => {
+          const active = t.id === activeId;
+          const Icon = t.kind === 'local' ? Laptop : Server;
+          return (
+            <Pressable
+              key={t.id}
+              role="tab"
+              aria-selected={active}
+              accessibilityLabel={t.kind === 'local' ? t.title : t.server.name}
+              onPress={() => setActiveTab(t.id)}
+              style={[s.row, { gap: 6, paddingLeft: 10, paddingRight: 4, paddingVertical: 5, borderRadius: 8, maxWidth: 220, backgroundColor: active ? C.surface2 : 'transparent', borderWidth: 1, borderColor: active ? C.border : 'transparent' }]}>
+              <Icon size={13} color={active ? C.text : C.muted} />
+              <Text style={{ color: active ? C.text : C.muted, fontSize: 13, fontWeight: active ? '600' : '400', flexShrink: 1 }} numberOfLines={1}>
+                {t.kind === 'local' ? t.title : t.server.name}
+              </Text>
+              <Dot color={t.open ? C.green : C.dim} size={6} />
+              <Pressable onPress={() => removeTab(t.id)} hitSlop={6} accessibilityLabel="Fermer l’onglet" style={{ padding: 3, borderRadius: 4 }}>
+                <X size={13} color={C.muted} />
+              </Pressable>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      <View style={[s.row, { gap: 6, paddingHorizontal: 8 }]}>
+        <Pressable onPress={() => openLocalSession()} accessibilityLabel="Nouveau terminal local" style={[s.row, { gap: 5, backgroundColor: C.surface2, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 6 }]}>
+          <Laptop size={14} color={C.text} />
+          <Text style={{ color: C.text, fontSize: 12 }}>Local</Text>
+        </Pressable>
+        <Pressable onPress={() => router.navigate('/')} accessibilityLabel="Nouvelle session SSH" style={[s.row, { gap: 5, backgroundColor: C.surface2, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 6 }]}>
+          <Plus size={14} color={C.text} />
+          <Text style={{ color: C.text, fontSize: 12 }}>SSH</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 export function TerminalView() {
-  const session = useSession();
+  const { tablet } = useTablet();
+  const { tabs, activeId } = useTerminals();
+  const session = tabs.find((t) => t.id === activeId) ?? null;
   const term = useRef<XTermRef>(null);
   const unsub = useRef<(() => void) | null>(null);
   const [ctrl, setCtrl] = useState(false);
@@ -58,19 +103,25 @@ export function TerminalView() {
 
   // Id of the session the terminal shows, null until xterm is ready.
   const shown = useRef<string | null>(null);
-  const latest = useRef<string | null>(null);
-  latest.current = session?.id ?? null;
 
-  function attach(id: string) {
+  function attach(id: string | null) {
     shown.current = id;
     unsub.current?.();
-    unsub.current = subscribeData((b64) => term.current?.write(b64));
+    unsub.current = id ? subscribeData(id, (b64) => term.current?.write(b64)) : null;
   }
 
-  // Reconnecting reuses the same xterm: remounting its WebView while this tab is hidden leaves it blank or frozen.
+  // Switching tabs or reconnecting reuses the same xterm: remounting its WebView while this tab is hidden
+  // leaves it blank or frozen. The new tab's buffered output is replayed into it.
   const sessionId = session?.id;
   useEffect(() => {
-    if (!sessionId || shown.current === null || shown.current === sessionId) return;
+    if (!sessionId) {
+      // Last tab closed: xterm unmounts, the next one attaches from onReady.
+      unsub.current?.();
+      unsub.current = null;
+      shown.current = null;
+      return;
+    }
+    if (shown.current === null || shown.current === sessionId) return;
     term.current?.clear();
     setCtrl(false);
     setSelecting(false);
@@ -96,7 +147,7 @@ export function TerminalView() {
       term.current?.setCtrl(!ctrl);
       return;
     }
-    sendText(seq);
+    sendText(seq, getActiveId());
     term.current?.focus();
   }
 
@@ -123,7 +174,9 @@ export function TerminalView() {
 
   async function pasteClipboard() {
     const text = await Clipboard.getStringAsync();
-    if (text) pasteText(text);
+    if (!text) return;
+    if (session?.kind === 'ssh') pasteText(text);
+    else term.current?.paste(text);
     if (selecting) stopSelect();
   }
 
@@ -152,14 +205,15 @@ export function TerminalView() {
         <View style={{ alignItems: 'center', gap: 12 }}>
           <SquareTerminal size={40} color={C.dim} />
           <Text style={s.h2}>Aucune session</Text>
-          <Text style={[s.muted, { textAlign: 'center' }]}>Connecte-toi à un serveur pour ouvrir un terminal.</Text>
+          <Text style={[s.muted, { textAlign: 'center' }]}>Connecte-toi à un serveur, ou ouvre un terminal sur cet appareil.</Text>
         </View>
         <Button title="Choisir un serveur" style={{ marginTop: 24, width: '100%', maxWidth: 360, alignSelf: 'center' }} onPress={() => router.navigate('/')} />
+        <Button title="Terminal local" variant="ghost" icon={<Laptop size={16} color={C.text} />} style={{ marginTop: 8, width: '100%', maxWidth: 360, alignSelf: 'center' }} onPress={() => openLocalSession()} />
       </SafeAreaView>
     );
   }
 
-  const { server } = session;
+  const server = session.kind === 'ssh' ? session.server : null;
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'left', 'right']}>
@@ -170,34 +224,48 @@ export function TerminalView() {
         <View style={{ flex: 1 }}>
           <View style={[s.row, { gap: 6 }]}>
             <Text style={{ color: C.text, fontWeight: '700', fontSize: 16 }} numberOfLines={1}>
-              {server.name}
+              {server ? server.name : 'Terminal local'}
             </Text>
-            <EnvBadge env={server.env} />
+            {server && <EnvBadge env={server.env} />}
           </View>
           <View style={[s.row, { gap: 4 }]}>
             <Dot color={session.open ? C.green : C.dim} size={6} />
-            <Text style={{ color: session.open ? C.green : C.muted, fontSize: 11 }}>{session.open ? `Connecté · ${session.latencyMs} ms` : 'Déconnecté'}</Text>
+            <Text style={{ color: session.open ? C.green : C.muted, fontSize: 11 }}>
+              {session.kind === 'ssh' ? (session.open ? `Connecté · ${session.latencyMs} ms` : 'Déconnecté') : session.open ? 'Cet appareil' : 'Terminé'}
+            </Text>
           </View>
         </View>
-        <Pressable onPress={() => router.push('/snippets')} style={{ backgroundColor: C.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 }}>
-          <Text style={{ color: C.text, fontSize: 12 }}>Snippets</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push('/quick-commands')} style={{ backgroundColor: C.surface2, borderRadius: 8, padding: 7 }}>
-          <Star size={16} color={C.orange} fill={C.orange} />
-        </Pressable>
+        {server && (
+          <>
+            <Pressable onPress={() => router.push('/snippets')} style={{ backgroundColor: C.surface2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 }}>
+              <Text style={{ color: C.text, fontSize: 12 }}>Snippets</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/quick-commands')} style={{ backgroundColor: C.surface2, borderRadius: 8, padding: 7 }}>
+              <Star size={16} color={C.orange} fill={C.orange} />
+            </Pressable>
+          </>
+        )}
         {session.open && (
-          <Pressable onPress={() => closeSession()} style={{ backgroundColor: C.redBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 }}>
+          <Pressable onPress={() => closeSession(session.kind === 'ssh' ? 'Déconnecté' : 'Session locale terminée', session.id)} style={{ backgroundColor: C.redBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 }}>
             <Text style={{ color: C.red, fontSize: 12, fontWeight: '600' }}>Quitter</Text>
           </Pressable>
         )}
       </View>
 
+      {(tablet || tabs.length > 1) && <TerminalTabs tabs={tabs} activeId={activeId} />}
+
       {!session.open && (
-        <View style={[s.row, { marginHorizontal: 12, marginBottom: 6, padding: 10, borderRadius: 10, backgroundColor: C.surface2, gap: 8 }]}>
+        <View style={[s.row, { marginHorizontal: 12, marginVertical: 6, padding: 10, borderRadius: 10, backgroundColor: C.surface2, gap: 8 }]}>
           <Text style={{ color: C.muted, fontSize: 12, flex: 1 }}>{session.closedReason}</Text>
-          <Pressable onPress={() => router.push(`/connect/${server.id}`)}>
-            <Text style={{ color: C.accent, fontWeight: '600' }}>Reconnecter</Text>
-          </Pressable>
+          {server ? (
+            <Pressable onPress={() => router.push(`/connect/${server.id}`)}>
+              <Text style={{ color: C.accent, fontWeight: '600' }}>Reconnecter</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => openLocalSession(session.id)}>
+              <Text style={{ color: C.accent, fontWeight: '600' }}>Relancer</Text>
+            </Pressable>
+          )}
         </View>
       )}
 
@@ -213,9 +281,9 @@ export function TerminalView() {
             match={C.orange}
             // iOS: no prev/next/done bar above the keyboard, the key bar below replaces it
             dom={{ style: { flex: 1, backgroundColor: C.bg }, scrollEnabled: false, hideKeyboardAccessoryView: true }}
-            onReady={async () => attach(latest.current!)}
-            onInput={async (b64) => sendB64(b64)}
-            onResize={async (cols, rows) => resizeSession(cols, rows)}
+            onReady={async () => attach(getActiveId())}
+            onInput={async (b64) => sendB64(b64, getActiveId())}
+            onResize={async (cols, rows) => resizeSession(cols, rows, getActiveId())}
             onCtrlConsumed={async () => setCtrl(false)}
             onSelectModeChange={async (on) => {
               if (on) {

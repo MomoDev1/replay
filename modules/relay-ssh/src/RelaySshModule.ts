@@ -12,6 +12,10 @@ declare class RelaySshModule extends NativeModule<RelaySshModuleEvents> {
   /** Runs a command on a separate channel of the connection and waits for it to exit. */
   exec(sessionId: string, command: string, timeoutMs: number | null): Promise<ExecResult>;
   disconnect(sessionId: string): Promise<void>;
+  /** Android only: runs `command` with the device's /system/bin/sh in `cwd`. Absent on iOS and older builds. */
+  localExec?(token: string, command: string, cwd: string, timeoutMs: number | null): Promise<ExecResult>;
+  /** Android only: kills a running localExec. */
+  localKill?(token: string): Promise<void>;
   generateKey(comment: string): Promise<GeneratedKey>;
   inspectKey(privateKey: string, passphrase: string | null): Promise<KeyInfo>;
 }
